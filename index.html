@@ -191,10 +191,10 @@ button{cursor:pointer;}
       <div id="prog-track"><div id="prog-fill" style="width:0"></div></div>
     </div>
     <div id="day-tabs">
-      <button class="dtab on" onclick="setDay('mon')" id="tab-mon">MON<span class="dtab-sub">UPPER</span></button>
-      <button class="dtab"    onclick="setDay('tue')" id="tab-tue">TUE<span class="dtab-sub">LOWER</span></button>
-      <button class="dtab"    onclick="setDay('thu')" id="tab-thu">THU<span class="dtab-sub">MOBILITY</span></button>
-      <button class="dtab"    onclick="setDay('fri')" id="tab-fri">FRI<span class="dtab-sub">FULL BODY</span></button>
+      <button class="dtab on" onclick="setDay('mon')" id="tab-mon">UPPER</button>
+      <button class="dtab"    onclick="setDay('tue')" id="tab-tue">LOWER</button>
+      <button class="dtab"    onclick="setDay('thu')" id="tab-thu">MOBILITY</button>
+      <button class="dtab"    onclick="setDay('fri')" id="tab-fri">FULL BODY</button>
     </div>
   </div>
 
@@ -208,10 +208,10 @@ button{cursor:pointer;}
     <!-- HISTORY -->
     <div id="hist-view">
       <div id="hist-day-tabs">
-        <button class="hdt on" onclick="setHistDay('mon')" id="htab-mon">MON</button>
-        <button class="hdt"    onclick="setHistDay('tue')" id="htab-tue">TUE</button>
-        <button class="hdt"    onclick="setHistDay('thu')" id="htab-thu">THU</button>
-        <button class="hdt"    onclick="setHistDay('fri')" id="htab-fri">FRI</button>
+        <button class="hdt on" onclick="setHistDay('mon')" id="htab-mon">UPPER</button>
+        <button class="hdt"    onclick="setHistDay('tue')" id="htab-tue">LOWER</button>
+        <button class="hdt"    onclick="setHistDay('thu')" id="htab-thu">MOBILITY</button>
+        <button class="hdt"    onclick="setHistDay('fri')" id="htab-fri">FULL BODY</button>
       </div>
       <div id="hist-content"></div>
     </div>
@@ -467,7 +467,7 @@ function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").repla
 function renderToday(){
   const d=P[day],c=d.color;
   document.documentElement.style.setProperty("--acc",c);
-  document.getElementById("hdr-title").innerHTML=`${d.label} <span style="color:${c}">${esc(d.sub)}</span>`;
+  document.getElementById("hdr-title").innerHTML=`<span style="color:${c}">${esc(d.sub)}</span>`;
   document.getElementById("hdr-date").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
   DAYS.forEach(dk=>{
     const t=document.getElementById("tab-"+dk);
@@ -476,7 +476,7 @@ function renderToday(){
     t.style.color=dk===day?P[dk].color:"var(--muted)";
     t.style.background=dk===day?"var(--card)":"transparent";
     // update sub label dynamically
-    t.innerHTML=DAY_LABELS[dk]+`<span class="dtab-sub">${esc(P[dk].sub.slice(0,7))}</span>`;
+    t.innerHTML=esc(P[dk].sub);
     t.onclick=()=>setDay(dk);
   });
   let html="",lastPhase=null;
