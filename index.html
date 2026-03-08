@@ -46,7 +46,7 @@ button{cursor:pointer;}
 #mode-row{display:flex;gap:1px;}
 .mode-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;transition:all 0.15s;}
 .mode-btn.on{background:var(--card);border-color:#444;color:var(--text);}
-.mode-btn.edit-on{background:#1a1000;border-color:var(--amber);color:var(--amber);}
+.mode-btn.edit-on{background:#001a3a;border-color:var(--blue);color:var(--blue);}
 
 /* PROGRESS */
 #prog-wrap{padding:8px 16px 10px;}
@@ -104,7 +104,7 @@ button{cursor:pointer;}
 /* EDIT */
 #edit-view{padding:14px;display:none;}
 #edit-view.show{display:block;}
-.edit-banner{background:#1a1000;border:1px solid #3a2800;border-left:3px solid var(--amber);padding:10px 14px;margin-bottom:14px;font-size:11px;color:#c8a84b;line-height:1.6;}
+.edit-banner{background:#001a3a;border:1px solid #003a7a;border-left:3px solid var(--amber);padding:10px 14px;margin-bottom:14px;font-size:11px;color:#6ec6f5;line-height:1.6;}
 .edit-excard{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);margin-bottom:6px;transition:opacity 0.2s;}
 .edit-excard-hdr{padding:10px 12px;display:flex;align-items:center;gap:8px;}
 .drag-handle{color:var(--muted);font-size:20px;padding:2px 6px;flex-shrink:0;user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;}
@@ -155,12 +155,12 @@ button{cursor:pointer;}
 #f-sep{color:#2a2a2a;}
 #f-frac{color:var(--muted);}
 
-/* BREAK TIMER FAB */
+/* REST TIMER FAB */
 #break-fab{
   position:fixed;right:16px;bottom:calc(82px + var(--safe-bot));
   width:58px;height:58px;border-radius:50%;
-  background:var(--card);border:2px solid var(--amber);
-  color:var(--amber);display:flex;flex-direction:column;
+  background:var(--card);border:2px solid var(--blue);
+  color:var(--blue);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;
   box-shadow:0 4px 20px #000c;z-index:90;font-family:inherit;
   transition:all 0.2s;
@@ -171,21 +171,21 @@ button{cursor:pointer;}
 #bfab-time{font-size:13px;font-weight:900;letter-spacing:1px;line-height:1;}
 #bfab-lbl{font-size:7px;letter-spacing:1px;font-weight:700;}
 
-/* BREAK MODAL */
+/* REST MODAL */
 #break-modal{display:none;position:fixed;inset:0;background:#000b;z-index:200;align-items:flex-end;justify-content:center;}
 #break-modal.show{display:flex;}
-#break-box{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--amber);padding:24px 20px;width:100%;max-width:400px;padding-bottom:calc(24px + var(--safe-bot));}
+#break-box{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--blue);padding:24px 20px;width:100%;max-width:400px;padding-bottom:calc(24px + var(--safe-bot));}
 #break-box.urgent{border-top-color:var(--rose);}
-.bm-title{font-size:9px;letter-spacing:3px;color:var(--amber);font-weight:700;margin-bottom:16px;}
+.bm-title{font-size:9px;letter-spacing:3px;color:var(--blue);font-weight:700;margin-bottom:16px;}
 #break-time-display{font-size:72px;font-weight:900;color:var(--text);text-align:center;letter-spacing:4px;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:6px;}
 #break-time-display.urgent{color:var(--rose);}
 #break-time-display.done{color:var(--green);}
 #bprog-track{height:3px;background:#1a1a1a;border-radius:2px;overflow:hidden;margin-bottom:20px;}
-#bprog-fill{height:100%;background:var(--amber);border-radius:2px;transition:width 0.4s linear;}
+#bprog-fill{height:100%;background:var(--blue);border-radius:2px;transition:width 0.4s linear;}
 #bprog-fill.urgent{background:var(--rose);}
 .bp-presets{display:flex;gap:5px;margin-bottom:12px;}
 .bpreset{flex:1;padding:8px 2px;font-size:10px;font-weight:700;letter-spacing:1px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:inherit;}
-.bpreset.on{border-color:var(--amber);color:var(--amber);background:#1a1000;}
+.bpreset.on{border-color:var(--blue);color:var(--blue);background:#001a3a;}
 .bcustom-row{display:flex;gap:10px;align-items:center;margin-bottom:16px;}
 .bcustom-row label{font-size:9px;letter-spacing:2px;color:var(--muted);white-space:nowrap;}
 #bcustom-min{max-width:56px;text-align:center;font-size:16px;font-weight:700;}
@@ -193,7 +193,7 @@ button{cursor:pointer;}
 .bcustom-sep{font-size:20px;font-weight:700;color:var(--muted);}
 .bctrl-btns{display:flex;gap:6px;}
 .bctrl{flex:1;padding:13px;font-size:12px;font-weight:700;letter-spacing:1px;border:none;font-family:inherit;cursor:pointer;}
-#bctrl-start{background:var(--amber);color:#0d0d0d;}
+#bctrl-start{background:var(--blue);color:#fff;}
 #bctrl-start.running{background:var(--rose);color:#fff;}
 #bctrl-start.done{background:var(--green);color:#0d0d0d;}
 #bctrl-close{background:var(--surface);color:var(--soft);}
@@ -210,7 +210,7 @@ button{cursor:pointer;}
 #conf-cancel{background:var(--surface);color:var(--soft);}
 
 /* OFFLINE */
-#offline-bar{display:none;background:#1a0a00;border-bottom:1px solid #3a1800;padding:6px 16px;font-size:10px;color:var(--amber);letter-spacing:1px;font-weight:700;text-align:center;}
+#offline-bar{display:none;background:#1a0a00;border-bottom:1px solid #3a1800;padding:6px 16px;font-size:10px;color:var(--blue);letter-spacing:1px;font-weight:700;text-align:center;}
 #offline-bar.show{display:block;}
 </style>
 </head>
@@ -289,16 +289,16 @@ button{cursor:pointer;}
   <span id="f-frac"></span>
 </div>
 
-<!-- BREAK FAB -->
+<!-- REST FAB -->
 <button id="break-fab" onclick="openBreak()">
-  <div id="bfab-time">BREAK</div>
+  <div id="bfab-time">REST</div>
   <div id="bfab-lbl">TIMER</div>
 </button>
 
-<!-- BREAK MODAL -->
+<!-- REST MODAL -->
 <div id="break-modal">
   <div id="break-box">
-    <div class="bm-title">BREAK TIMER</div>
+    <div class="bm-title">REST TIMER</div>
     <div id="break-time-display">01:30</div>
     <div id="bprog-track"><div id="bprog-fill" style="width:100%"></div></div>
     <div class="bp-presets">
@@ -546,7 +546,7 @@ function swRestore(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&swRunning){cancelAnimationFrame(swRaf);swTick();}});
 
-// ── BREAK TIMER — clock-based, survives backgrounding ─────────────────
+// ── REST TIMER — clock-based, survives backgrounding ─────────────────
 let breakTotal=90,breakEndEpoch=0,breakRunning=false,breakRaf=null,breakPausedRemaining=90;
 function breakGetRemaining(){return breakRunning?Math.max(0,Math.ceil((breakEndEpoch-Date.now())/1000)):breakPausedRemaining;}
 function openBreak(){document.getElementById("break-modal").classList.add("show");updateBreakDisplay();}
@@ -620,7 +620,7 @@ function updateBreakDisplay(){
   document.getElementById("bprog-fill").className=urgent?"urgent":"";
   const fab=document.getElementById("break-fab");
   document.getElementById("bfab-time").textContent=done?"DONE":txt;
-  document.getElementById("bfab-lbl").textContent=done?"✓":"BREAK";
+  document.getElementById("bfab-lbl").textContent=done?"✓":"REST";
   if(done)fab.classList.add("done");else fab.classList.remove("done");
 }
 function breakRestore(){
