@@ -407,6 +407,8 @@ function load(){
   try{logs=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");}catch{logs={};}
   try{const s=localStorage.getItem(SK_PROG);P=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_P));}
   catch{P=JSON.parse(JSON.stringify(DEFAULT_P));}
+  // Force all day colors to blue
+  Object.keys(P).forEach(dk=>{P[dk].color='#4a9eff';});
 }
 let saveT;
 function save(){
