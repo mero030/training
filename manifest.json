@@ -1,6 +1,6 @@
 {
-  "name": "Training Tracker",
-  "short_name": "Trainer",
+  "name": "Progress Ladder",
+  "short_name": "Progress Ladder",
   "description": "Personal training tracker — log sets, reps, and track progress",
   "start_url": "./index.html",
   "display": "standalone",
