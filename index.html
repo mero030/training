@@ -570,9 +570,7 @@ function applyCustomBreak(){
   document.querySelectorAll(".bpreset").forEach(b=>b.classList.remove("on"));
   updateBreakDisplay();
 }
-// ── NOTIFICATIONS ────────────────────────────────────────────────────
-let scheduledNotifTimeout=null;
-
+// ── NOTIFICATIONS — via Service Worker ───────────────────────────────
 async function requestNotifPermission(){
   if(!('Notification' in window))return false;
   if(Notification.permission==='granted')return true;
@@ -581,36 +579,17 @@ async function requestNotifPermission(){
   return result==='granted';
 }
 
-function scheduleRestNotif(ms){
-  cancelRestNotif();
-  if(!('Notification' in window))return;
-  if(Notification.permission!=='granted')return;
-  scheduledNotifTimeout=setTimeout(()=>{
-    try{
-      const n=new Notification('Rest Over — Back to Work! 💪',{
-        body:'Your rest timer has finished.',
-        icon:'icons/icon-192.png',
-        badge:'icons/icon-96.png',
-        vibrate:[200,100,200,100,400],
-        requireInteraction:true,
-        silent:false,
-        tag:'rest-timer',
-        renotify:true,
-      });
-      n.onclick=()=>{n.close();window.focus();};
-    }catch(e){console.warn('Notif error:',e);}
-  },ms);
+function swMsg(data){
+  if('serviceWorker' in navigator && navigator.serviceWorker.controller)
+    navigator.serviceWorker.controller.postMessage(data);
+}
+
+function scheduleRestNotif(endEpoch){
+  swMsg({type:'scheduleRest', endEpoch});
 }
 
 function cancelRestNotif(){
-  clearTimeout(scheduledNotifTimeout);
-  scheduledNotifTimeout=null;
-  // Close any existing rest notification
-  try{
-    if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-      navigator.serviceWorker.controller.postMessage({type:'closeNotif',tag:'rest-timer'});
-    }
-  }catch(e){}
+  swMsg({type:'cancelRest'});
 }
 
 function breakTick(){
@@ -652,7 +631,7 @@ function breakToggle(){
     document.getElementById("break-fab").classList.add("running");
     document.getElementById("break-fab").classList.remove("done");
     localStorage.setItem("break_state",JSON.stringify({running:true,total:breakTotal,endEpoch:breakEndEpoch}));
-    requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(breakPausedRemaining*1000); });
+    requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(Date.now()+breakPausedRemaining*1000); });
     breakTick();
   }
 }
@@ -680,7 +659,7 @@ function breakRestore(){
         document.getElementById("bctrl-start").textContent="PAUSE";
         document.getElementById("bctrl-start").className="bctrl running";
         document.getElementById("break-fab").classList.add("running");
-        requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(rem*1000); });
+        requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(breakEndEpoch); });
         breakTick();
       }else{
         breakPausedRemaining=0;

@@ -33,10 +33,44 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Handle close notification message from app
+// ── REST TIMER NOTIFICATION ───────────────────────────────────────────
+let restTimerTimeout = null;
+
 self.addEventListener('message', e => {
-  if(e.data && e.data.type === 'closeNotif'){
-    self.registration.getNotifications({tag: e.data.tag})
+  if (!e.data) return;
+
+  if (e.data.type === 'scheduleRest') {
+    // Cancel any existing scheduled notification
+    if (restTimerTimeout) { clearTimeout(restTimerTimeout); restTimerTimeout = null; }
+    const delay = e.data.endEpoch - Date.now();
+    if (delay <= 0) return;
+    restTimerTimeout = setTimeout(() => {
+      self.registration.showNotification('Rest Over — Back to Work! 💪', {
+        body: 'Your rest timer has finished.',
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-96.png',
+        tag: 'rest-timer',
+        renotify: true,
+        requireInteraction: true,
+        vibrate: [200, 100, 200, 100, 400],
+      });
+      restTimerTimeout = null;
+    }, delay);
+  }
+
+  if (e.data.type === 'cancelRest') {
+    if (restTimerTimeout) { clearTimeout(restTimerTimeout); restTimerTimeout = null; }
+    self.registration.getNotifications({ tag: 'rest-timer' })
       .then(notifs => notifs.forEach(n => n.close()));
   }
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      if (list.length > 0) return list[0].focus();
+      return clients.openWindow('./');
+    })
+  );
 });
