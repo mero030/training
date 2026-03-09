@@ -32,3 +32,11 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match(e.request))
   );
 });
+
+// Handle close notification message from app
+self.addEventListener('message', e => {
+  if(e.data && e.data.type === 'closeNotif'){
+    self.registration.getNotifications({tag: e.data.tag})
+      .then(notifs => notifs.forEach(n => n.close()));
+  }
+});

@@ -570,6 +570,49 @@ function applyCustomBreak(){
   document.querySelectorAll(".bpreset").forEach(b=>b.classList.remove("on"));
   updateBreakDisplay();
 }
+// ── NOTIFICATIONS ────────────────────────────────────────────────────
+let scheduledNotifTimeout=null;
+
+async function requestNotifPermission(){
+  if(!('Notification' in window))return false;
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='denied')return false;
+  const result=await Notification.requestPermission();
+  return result==='granted';
+}
+
+function scheduleRestNotif(ms){
+  cancelRestNotif();
+  if(!('Notification' in window))return;
+  if(Notification.permission!=='granted')return;
+  scheduledNotifTimeout=setTimeout(()=>{
+    try{
+      const n=new Notification('Rest Over — Back to Work! 💪',{
+        body:'Your rest timer has finished.',
+        icon:'icons/icon-192.png',
+        badge:'icons/icon-96.png',
+        vibrate:[200,100,200,100,400],
+        requireInteraction:true,
+        silent:false,
+        tag:'rest-timer',
+        renotify:true,
+      });
+      n.onclick=()=>{n.close();window.focus();};
+    }catch(e){console.warn('Notif error:',e);}
+  },ms);
+}
+
+function cancelRestNotif(){
+  clearTimeout(scheduledNotifTimeout);
+  scheduledNotifTimeout=null;
+  // Close any existing rest notification
+  try{
+    if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+      navigator.serviceWorker.controller.postMessage({type:'closeNotif',tag:'rest-timer'});
+    }
+  }catch(e){}
+}
+
 function breakTick(){
   if(!breakRunning)return;
   const rem=breakGetRemaining();
@@ -589,6 +632,7 @@ function breakToggle(){
   const rem=breakGetRemaining();
   if(rem<=0){
     breakPausedRemaining=breakTotal;breakRunning=false;cancelAnimationFrame(breakRaf);
+    cancelRestNotif();
     document.getElementById("bctrl-start").textContent="START";
     document.getElementById("bctrl-start").className="bctrl";
     document.getElementById("break-fab").classList.remove("running","done");
@@ -596,6 +640,7 @@ function breakToggle(){
   }
   if(breakRunning){
     breakPausedRemaining=breakGetRemaining();breakRunning=false;cancelAnimationFrame(breakRaf);
+    cancelRestNotif();
     document.getElementById("bctrl-start").textContent="RESUME";
     document.getElementById("bctrl-start").className="bctrl";
     document.getElementById("break-fab").classList.remove("running");
@@ -607,6 +652,7 @@ function breakToggle(){
     document.getElementById("break-fab").classList.add("running");
     document.getElementById("break-fab").classList.remove("done");
     localStorage.setItem("break_state",JSON.stringify({running:true,total:breakTotal,endEpoch:breakEndEpoch}));
+    requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(breakPausedRemaining*1000); });
     breakTick();
   }
 }
@@ -634,6 +680,7 @@ function breakRestore(){
         document.getElementById("bctrl-start").textContent="PAUSE";
         document.getElementById("bctrl-start").className="bctrl running";
         document.getElementById("break-fab").classList.add("running");
+        requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(rem*1000); });
         breakTick();
       }else{
         breakPausedRemaining=0;
