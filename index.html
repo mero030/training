@@ -129,7 +129,7 @@ button{cursor:pointer;}
 #hist-day-tabs{display:flex;gap:1px;margin-bottom:14px;}
 .hdt{flex:1;padding:8px 4px;font-size:10px;font-weight:700;letter-spacing:1px;background:transparent;border:1px solid var(--border);color:var(--muted);transition:all 0.15s;}
 .hdt.on{background:var(--card);color:var(--text);border-color:#444;}
-.hsession{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);margin-bottom:8px;}
+.hsession{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);margin-bottom:18px;}
 .hshdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:6px;}
 .hsdate{font-size:13px;font-weight:700;flex:1;}
 .hscount{font-size:9px;color:var(--muted);letter-spacing:1px;}
@@ -423,10 +423,30 @@ function flash(){const b=document.getElementById("save-badge");b.classList.add("
 // ── LOG OPS ───────────────────────────────────────────────────────────
 function dl(){const t=todayKey();if(!logs[t])logs[t]={};if(!logs[t][day])logs[t][day]={};return logs[t][day];}
 function sets(id){return dl()[id]||[];}
-function addSet(id){const d=dl();if(!d[id])d[id]=[];d[id].push({reps:"",weight:"",note:"",done:false});save();renderToday();}
+function addSet(id){
+  const d=dl();
+  if(!d[id])d[id]=[];
+  d[id].push({reps:"",weight:"",note:"",done:false});
+  // Record session start time on very first set of the day
+  const t=todayKey();
+  if(!logs[t]._meta)logs[t]._meta={};
+  if(!logs[t]._meta[day])logs[t]._meta[day]={start:Date.now()};
+  save();renderToday();
+}
 function upd(id,i,f,v){const s=dl()[id];if(s&&s[i]!==undefined){s[i][f]=v;save();updateUI();}}
 function delSet(id,i){const d=dl();if(d[id]){d[id].splice(i,1);save();renderToday();}}
-function tog(id,i){const s=dl()[id];if(s&&s[i]!==undefined){s[i].done=!s[i].done;save();renderToday();}}
+function tog(id,i){
+  const s=dl()[id];
+  if(s&&s[i]!==undefined){
+    s[i].done=!s[i].done;
+    // Update session end time on every toggle
+    const t=todayKey();
+    if(!logs[t]._meta)logs[t]._meta={};
+    if(!logs[t]._meta[day])logs[t]._meta[day]={};
+    logs[t]._meta[day].end=Date.now();
+    save();renderToday();
+  }
+}
 
 // ── HISTORY DELETE ────────────────────────────────────────────────────
 function delSession(date,dk){
@@ -807,15 +827,24 @@ function renderHist(){
   let html="";
   hist.forEach(([dt,data])=>{
     const sd=data[histDay]||{};
-    const allIds=Object.keys(sd).filter(id=>sd[id]&&sd[id].length);
+    const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&sd[id]&&sd[id].length);
     if(!allIds.length)return;
     const logged=allIds.map(id=>{const f=P[histDay].exercises.find(e=>e.id===id);return{id,name:f?f.name:id};});
     const d=new Date(dt+"T12:00:00");
     const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+    // Get duration from meta
+    const meta=(data._meta&&data._meta[histDay])||{};
+    let durStr="";
+    if(meta.start&&meta.end){
+      const mins=Math.round((meta.end-meta.start)/60000);
+      durStr=mins>=1?`${mins} min`:"";
+    }
     html+=`<div class="hsession" style="border-left-color:${c}">
       <div class="hshdr">
         <div class="hsdate" style="color:${c}">${lbl}</div>
-        <div class="hscount">${logged.length} EX</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <div class="hscount">${logged.length} EX${durStr?" · "+durStr:""}</div>
+        </div>
         <button class="hdel-session" onclick="delSession('${dt}','${histDay}')">${ICO_TRASH}</button>
       </div>`;
     logged.forEach(({id,name})=>{
