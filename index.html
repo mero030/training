@@ -713,7 +713,7 @@ function prog(){
   return{done,logged,total:exs.length,pct};
 }
 function updateUI(){
-  const{done,total,pct}=prog();const c=P[day].color;
+  const{done,logged,total,pct}=prog();const c=P[day].color;
   document.getElementById("prog-ct").textContent=`${logged}/${total}`;
   document.getElementById("prog-ct").style.color=c;
   document.getElementById("prog-fill").style.width=pct+"%";
