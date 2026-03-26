@@ -67,7 +67,7 @@ button{cursor:pointer;}
 
 /* DAY TABS */
 #day-tabs{display:flex;border-top:1px solid var(--border);}
-.dtab{flex:1;padding:9px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
+.dtab{flex:1;padding:9px 2px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
 .dtab.on{background:var(--card);}
 .dtab-sub{font-size:7px;letter-spacing:1px;opacity:0.65;}
 
@@ -127,7 +127,7 @@ button{cursor:pointer;}
 #hist-view{padding:14px;display:none;}
 #hist-view.show{display:block;}
 #hist-day-tabs{display:flex;gap:1px;margin-bottom:14px;}
-.hdt{flex:1;padding:8px 4px;font-size:10px;font-weight:700;letter-spacing:1px;background:transparent;border:1px solid var(--border);color:var(--muted);transition:all 0.15s;}
+.hdt{flex:1;padding:8px 2px;font-size:9px;font-weight:700;letter-spacing:1px;background:transparent;border:1px solid var(--border);color:var(--muted);transition:all 0.15s;}
 .hdt.on{background:var(--card);color:var(--text);border-color:#444;}
 .hsession{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);margin-bottom:18px;}
 .hshdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:6px;}
@@ -252,7 +252,8 @@ button{cursor:pointer;}
     <div id="day-tabs">
       <button class="dtab on" onclick="setDay('mon')" id="tab-mon">UPPER</button>
       <button class="dtab"    onclick="setDay('tue')" id="tab-tue">LOWER</button>
-      <button class="dtab"    onclick="setDay('thu')" id="tab-thu">MOBILITY</button>
+      <button class="dtab"    onclick="setDay('thu')" id="tab-thu">UPPER MOB</button>
+      <button class="dtab"    onclick="setDay('sat')" id="tab-sat">LOWER MOB</button>
       <button class="dtab"    onclick="setDay('fri')" id="tab-fri">FULL BODY</button>
     </div>
   </div>
@@ -266,8 +267,9 @@ button{cursor:pointer;}
       <div id="hist-day-tabs">
         <button class="hdt on" onclick="setHistDay('mon')" id="htab-mon">UPPER</button>
         <button class="hdt"    onclick="setHistDay('tue')" id="htab-tue">LOWER</button>
-        <button class="hdt"    onclick="setHistDay('thu')" id="htab-thu">MOBILITY</button>
-        <button class="hdt"    onclick="setHistDay('fri')" id="htab-fri">FULL BODY</button>
+        <button class="hdt"    onclick="setHistDay('thu')" id="htab-thu">UP MOB</button>
+        <button class="hdt"    onclick="setHistDay('sat')" id="htab-sat">LW MOB</button>
+        <button class="hdt"    onclick="setHistDay('fri')" id="htab-fri">FULL</button>
       </div>
       <div id="hist-content"></div>
     </div>
@@ -360,22 +362,39 @@ const DEFAULT_P={
     {id:"tue_s5", name:"Side-Lying Leg Raises",    target:"3 × 12–15",  phase:"Strength"},
     {id:"tue_s6", name:"Wall Sit — Max Hold",      target:"1 × max",    phase:"Strength"},
   ]},
-  thu:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
-    {id:"thu_wu1",name:"90/90 Transitions",        target:"2 × 10",     phase:"Warm-Up"},
-    {id:"thu_wu2",name:"Deep Squat Sit-Ins",       target:"10 reps",    phase:"Warm-Up"},
-    {id:"thu_wu3",name:"Thoracic Extensions",      target:"2 × 10",     phase:"Warm-Up"},
-    {id:"thu_m1", name:"Bridge Hold",              target:"3 × 20–30s", phase:"Priority 1 — Bridge"},
-    {id:"thu_m2", name:"Doorway Chest Stretch",    target:"2 × 30s",    phase:"Priority 1 — Bridge"},
-    {id:"thu_m3", name:"Couch Stretch",            target:"2 × 45s",    phase:"Priority 2 — Squat"},
-    {id:"thu_m4", name:"Lizard Stretch",           target:"2 × 30–45s", phase:"Priority 2 — Squat"},
-    {id:"thu_m5", name:"Cossack Squat",            target:"2 × 8–10",   phase:"Priority 2 — Squat"},
-    {id:"thu_m6", name:"Butterfly Stretch",        target:"2 × 45s",    phase:"Priority 2 — Squat"},
-    {id:"thu_m7", name:"Pancake Stretch",          target:"2 × 30–45s", phase:"Priority 3 — Splits"},
-    {id:"thu_m8", name:"Hand-to-Toes",             target:"2 × 30–45s", phase:"Priority 3 — Splits"},
-    {id:"thu_m9", name:"Side Split Progression",   target:"2 × 30s",    phase:"Priority 3 — Splits"},
-    {id:"thu_m10",name:"Side Bends + Spinal Twist",target:"5 min",      phase:"Close"},
+  thu:{label:"DAY 3",sub:"UPPER MOB",color:"#4a9eff",exercises:[
+    {id:"thu_p1", name:"Tennis Ball Thoracic Release", target:"30s per spot × 4",  phase:"Prepare"},
+    {id:"thu_p2", name:"Shoulder CARs",                target:"5 circles each arm", phase:"Prepare"},
+    {id:"thu_p3", name:"Cat-Cow",                      target:"2 × 10 slow",        phase:"Prepare"},
+    {id:"thu_e1", name:"Sphinx Pose",                  target:"3 × 60s",            phase:"Expand"},
+    {id:"thu_e2", name:"Doorway Chest Stretch — Low",  target:"3 × 30s each side",  phase:"Expand"},
+    {id:"thu_e3", name:"Doorway Chest Stretch — Mid",  target:"3 × 30s each side",  phase:"Expand"},
+    {id:"thu_e4", name:"Doorway Chest Stretch — High", target:"3 × 30s each side",  phase:"Expand"},
+    {id:"thu_e5", name:"Puppy Pose",                   target:"3 × 60s",            phase:"Expand"},
+    {id:"thu_e6", name:"Bridge Hold Progression",      target:"3 attempts × 10s",   phase:"Expand"},
+    {id:"thu_e7", name:"Supported Fish Pose",          target:"2 × 90s",            phase:"Expand"},
+    {id:"thu_o1", name:"Wall Slide",                   target:"3 × 10",             phase:"Own It"},
+    {id:"thu_o2", name:"Active Cobra",                 target:"3 × 8",              phase:"Own It"},
+    {id:"thu_o3", name:"Bear Plank Shoulder Taps",     target:"2 × 10 each side",   phase:"Own It"},
+    {id:"thu_c1", name:"Supine Spinal Twist",          target:"90s each side",      phase:"Close"},
   ]},
-  fri:{label:"DAY 4",sub:"FULL BODY",color:"#4a9eff",exercises:[
+  sat:{label:"DAY 4",sub:"LOWER MOB",color:"#4a9eff",exercises:[
+    {id:"sat_p1", name:"Tennis Ball Calf Release",     target:"30s per spot each",  phase:"Prepare"},
+    {id:"sat_p2", name:"Tennis Ball Hip Flexor",       target:"45s each side",      phase:"Prepare"},
+    {id:"sat_p3", name:"Hip CARs",                     target:"5 circles each side",phase:"Prepare"},
+    {id:"sat_p4", name:"Ankle Circles + Calf Raises",  target:"10 each + 10 raises",phase:"Prepare"},
+    {id:"sat_e1", name:"Couch Stretch",                target:"3 × 60s each side",  phase:"Expand"},
+    {id:"sat_e2", name:"Lizard Stretch",               target:"3 × 60s each side",  phase:"Expand"},
+    {id:"sat_e3", name:"90/90 Stretch",                target:"3 × 60s each side",  phase:"Expand"},
+    {id:"sat_e4", name:"Deep Squat Hold",              target:"3 × 45s",            phase:"Expand"},
+    {id:"sat_e5", name:"Butterfly Stretch",            target:"2 × 60s",            phase:"Expand"},
+    {id:"sat_e6", name:"Pancake Stretch",              target:"2 × 45s",            phase:"Expand"},
+    {id:"sat_o1", name:"Cossack Squat",                target:"3 × 8 each side",    phase:"Own It"},
+    {id:"sat_o2", name:"Deep Squat to Stand",          target:"3 × 5",              phase:"Own It"},
+    {id:"sat_o3", name:"Standing Hip Airplane",        target:"2 × 8 each side",    phase:"Own It"},
+    {id:"sat_c1", name:"Legs Up the Wall",             target:"3 min",              phase:"Close"},
+  ]},
+  fri:{label:"DAY 5",sub:"FULL BODY",color:"#4a9eff",exercises:[
     {id:"fri_wu1",name:"Calf Roll + Ankle Circles",target:"5 min",      phase:"Warm-Up"},
     {id:"fri_wu2",name:"Sun Salutation Flow",       target:"5 rounds",   phase:"Warm-Up"},
     {id:"fri_c1", name:"Push-Ups",                  target:"3 × 8",      phase:"Circuit"},
@@ -388,7 +407,7 @@ const DEFAULT_P={
   ]},
 };
 
-const DAYS=["mon","tue","thu","fri"];
+const DAYS=["mon","tue","thu","sat","fri"];
 const SK_LOGS="training_logs_v2";
 const SK_PROG="training_program_v2";
 
@@ -704,6 +723,29 @@ function breakRestore(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunning){cancelAnimationFrame(breakRaf);breakTick();}});
 
+
+// ── LAST SESSION DATA ─────────────────────────────────────────────────
+function getLastSession(dk,exId){
+  const dates=Object.keys(logs)
+    .filter(dt=>logs[dt][dk]&&logs[dt][dk][exId]&&logs[dt][dk][exId].length>0)
+    .sort((a,b)=>b.localeCompare(a));
+  // Skip today
+  const today=todayKey();
+  const last=dates.find(dt=>dt!==today);
+  if(!last)return null;
+  return logs[last][dk][exId];
+}
+function fmtLastSession(sets){
+  if(!sets||!sets.length)return null;
+  const logged=sets.filter(s=>s.reps||s.note);
+  if(!logged.length)return null;
+  return logged.map((s,i)=>{
+    const parts=[s.reps].filter(Boolean);
+    if(s.note)parts.push(s.note);
+    return parts.join(' ');
+  }).filter(Boolean).join(' · ');
+}
+
 // ── PROGRESS ─────────────────────────────────────────────────────────
 function prog(){
   const exs=P[day].exercises;
@@ -761,7 +803,11 @@ function renderToday(){
       <div class="exhdr">
         <div style="flex:1;min-width:0">
           <div class="exname${allDone?" dn":""}">${allDone?ICO_CHECK:""}${esc(ex.name)}</div>
-          <div class="extarget">TARGET: ${esc(ex.target)}</div>
+          <div class="extarget">${(()=>{
+            const ls=getLastSession(day,ex.id);
+            const fmt=fmtLastSession(ls);
+            return fmt?'LAST: '+esc(fmt):'TARGET: '+esc(ex.target);
+          })()}</div>
         </div>
         <button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>
       </div>`;
