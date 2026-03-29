@@ -419,15 +419,25 @@ let dragSrc=null,touchDragId=null,touchLastTarget=null;
 
 function guessDay(){return({1:"mon",2:"tue",4:"thu",5:"fri"})[new Date().getDay()]||"mon";}
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function yesterdayKey(){const d=new Date();d.setDate(d.getDate()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function activeKey(){
-  // If today already has logs for this day, use today
-  const today=todayKey();
-  if(logs[today]&&logs[today][day]&&Object.keys(logs[today][day]).length)return today;
-  // If stopwatch is running and yesterday has logs for this day, we crossed midnight — stay on yesterday
-  const yesterday=yesterdayKey();
-  if(swRunning&&logs[yesterday]&&logs[yesterday][day]&&Object.keys(logs[yesterday][day]).length)return yesterday;
-  return today;
+  // Use the locked session date if one exists for this day
+  const locked=localStorage.getItem('session_date_'+day);
+  if(locked){
+    // If today is different from locked date, check if locked date still has data
+    // If it does, keep using it (user is mid-session across midnight)
+    // If today matches, clear the lock (new session)
+    if(locked===todayKey())return locked;
+    if(logs[locked]&&logs[locked][day]&&Object.keys(logs[locked][day]).length)return locked;
+    // Stale lock — clear it
+    localStorage.removeItem('session_date_'+day);
+  }
+  return todayKey();
+}
+function lockSessionDate(){
+  localStorage.setItem('session_date_'+day, activeKey());
+}
+function unlockSessionDate(){
+  localStorage.removeItem('session_date_'+day);
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -460,7 +470,8 @@ function addSet(id){
   const t=activeKey();
   if(!logs[t]._meta)logs[t]._meta={};
   if(!logs[t]._meta[day])logs[t]._meta[day]={start:Date.now()};
-  // Auto-start stopwatch on first set
+  // Lock session date and auto-start stopwatch on first set
+  lockSessionDate();
   if(!swRunning && swSavedMs===0) swToggle();
   save();renderToday();
 }
@@ -565,6 +576,8 @@ function swToggle(){
     document.getElementById("sw-toggle").textContent="START";
     document.getElementById("sw-toggle").className="sw-btn go";
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
+    // Unlock session date — session is complete
+    unlockSessionDate();
     // Save workout duration to history meta
     const t=activeKey();
     if(!logs[t])logs[t]={};
