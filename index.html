@@ -419,6 +419,16 @@ let dragSrc=null,touchDragId=null,touchLastTarget=null;
 
 function guessDay(){return({1:"mon",2:"tue",4:"thu",5:"fri"})[new Date().getDay()]||"mon";}
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function yesterdayKey(){const d=new Date();d.setDate(d.getDate()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function activeKey(){
+  // If today already has logs for this day, use today
+  const today=todayKey();
+  if(logs[today]&&logs[today][day]&&Object.keys(logs[today][day]).length)return today;
+  // If stopwatch is running and yesterday has logs for this day, we crossed midnight — stay on yesterday
+  const yesterday=yesterdayKey();
+  if(swRunning&&logs[yesterday]&&logs[yesterday][day]&&Object.keys(logs[yesterday][day]).length)return yesterday;
+  return today;
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
 // ── STORAGE ───────────────────────────────────────────────────────────
@@ -440,14 +450,14 @@ function save(){
 function flash(){const b=document.getElementById("save-badge");b.classList.add("show");setTimeout(()=>b.classList.remove("show"),1500);}
 
 // ── LOG OPS ───────────────────────────────────────────────────────────
-function dl(){const t=todayKey();if(!logs[t])logs[t]={};if(!logs[t][day])logs[t][day]={};return logs[t][day];}
+function dl(){const t=activeKey();if(!logs[t])logs[t]={};if(!logs[t][day])logs[t][day]={};return logs[t][day];}
 function sets(id){return dl()[id]||[];}
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
   d[id].push({reps:"",weight:"",note:"",done:false});
   // Record session start time on very first set of the day
-  const t=todayKey();
+  const t=activeKey();
   if(!logs[t]._meta)logs[t]._meta={};
   if(!logs[t]._meta[day])logs[t]._meta[day]={start:Date.now()};
   // Auto-start stopwatch on first set
@@ -556,7 +566,7 @@ function swToggle(){
     document.getElementById("sw-toggle").className="sw-btn go";
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
     // Save workout duration to history meta
-    const t=todayKey();
+    const t=activeKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[day])logs[t]._meta[day]={};
