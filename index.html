@@ -529,13 +529,24 @@ function saveExEdit(id){
   const ex=P[day].exercises.find(e=>e.id===id);if(!ex)return;
   const n=document.getElementById("ename-"+id);
   const t=document.getElementById("etarget-"+id);
-  const ph=document.getElementById("ephase-"+id);
+  const phSelect=document.getElementById("ephase-"+id);
+  const phNew=document.getElementById("ephase-new-"+id);
   if(n)ex.name=n.value.trim()||ex.name;
   if(t)ex.target=t.value.trim()||ex.target;
-  if(ph)ex.phase=ph.value.trim()||ex.phase;
+  if(phSelect){
+    const val=phSelect.value==="__new__"?(phNew?phNew.value.trim():""):phSelect.value;
+    if(val)ex.phase=val;
+  }
   expandedEx=null;save();renderEdit();renderToday();
 }
 function toggleEditExpand(id){expandedEx=expandedEx===id?null:id;renderEdit();}
+function onPhaseChange(id){
+  const sel=document.getElementById("ephase-"+id);
+  const newInput=document.getElementById("ephase-new-"+id);
+  if(!sel||!newInput)return;
+  newInput.style.display=sel.value==="__new__"?"block":"none";
+  if(sel.value==="__new__")newInput.focus();
+}
 
 // ── DRAG REORDER ──────────────────────────────────────────────────────
 function reorder(fromId,toId){
@@ -878,7 +889,17 @@ function renderEdit(){
       <div class="edit-exbody${open?" open":""}">
         <div class="edit-field"><label>NAME</label><input id="ename-${ex.id}" value="${esc(ex.name)}"></div>
         <div class="edit-field"><label>TARGET</label><input id="etarget-${ex.id}" value="${esc(ex.target)}"></div>
-        <div class="edit-field"><label>PHASE / SECTION</label><input id="ephase-${ex.id}" value="${esc(ex.phase)}"></div>
+        <div class="edit-field"><label>PHASE / SECTION</label>
+          ${(()=>{
+            const phases=[...new Set(P[day].exercises.map(e=>e.phase))];
+            const opts=phases.map(p=>`<option value="${esc(p)}"${p===ex.phase?' selected':''}>${esc(p)}</option>`).join('');
+            return `<select id="ephase-${ex.id}" onchange="onPhaseChange('${ex.id}')" style="background:#0a0a0a;border:1px solid #252525;color:var(--text);padding:8px 9px;font-size:15px;width:100%;outline:none;border-radius:2px;font-family:inherit;-webkit-appearance:none;">
+              ${opts}
+              <option value="__new__">+ New section...</option>
+            </select>
+            <input id="ephase-new-${ex.id}" placeholder="Type new section name" style="display:none;margin-top:6px;background:#0a0a0a;border:1px solid #252525;color:var(--text);padding:8px 9px;font-size:15px;width:100%;outline:none;border-radius:2px;font-family:inherit;">`;
+          })()}
+        </div>
         <div class="edit-actions">
           <button class="eact-btn eact-del" onclick="deleteExercise('${ex.id}')">${ICO_TRASH} Delete</button>
           <button class="eact-btn eact-save" onclick="saveExEdit('${ex.id}')">✓ Save</button>
