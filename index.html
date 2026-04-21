@@ -625,6 +625,11 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&swRunning
 
 // ── REST TIMER — clock-based, survives backgrounding ─────────────────
 let breakTotal=90,breakEndEpoch=0,breakRunning=false,breakRaf=null,breakPausedRemaining=90;
+let wakeLock=null;
+async function requestWakeLock(){try{if("wakeLock" in navigator){wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>{wakeLock=null;});}}catch(e){console.warn("WakeLock:",e);}}
+function releaseWakeLock(){if(wakeLock){wakeLock.release();wakeLock=null;}}
+// Re-acquire wake lock when app comes back to foreground
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunning&&!wakeLock)requestWakeLock();});
 function breakGetRemaining(){return breakRunning?Math.max(0,Math.ceil((breakEndEpoch-Date.now())/1000)):breakPausedRemaining;}
 function openBreak(){document.getElementById("break-modal").classList.add("show");updateBreakDisplay();}
 function closeBreak(){document.getElementById("break-modal").classList.remove("show");}
@@ -647,6 +652,25 @@ function applyCustomBreak(){
   document.querySelectorAll(".bpreset").forEach(b=>b.classList.remove("on"));
   updateBreakDisplay();
 }
+// ── AUDIO BEEP ───────────────────────────────────────────────────────
+function playBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const beeps=[0,300,600];
+    beeps.forEach(delay=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.frequency.value=880;
+      osc.type="sine";
+      gain.gain.setValueAtTime(0.8,ctx.currentTime+delay/1000);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay/1000+0.4);
+      osc.start(ctx.currentTime+delay/1000);
+      osc.stop(ctx.currentTime+delay/1000+0.4);
+    });
+  }catch(e){console.warn("Audio:",e);}
+}
+
 // ── NOTIFICATIONS — via Service Worker ───────────────────────────────
 async function requestNotifPermission(){
   if(!('Notification' in window))return false;
@@ -675,10 +699,12 @@ function breakTick(){
   updateBreakDisplay();
   if(rem<=0){
     breakRunning=false;cancelAnimationFrame(breakRaf);breakPausedRemaining=0;
+    cancelRestNotif();releaseWakeLock();
     document.getElementById("bctrl-start").textContent="RESET";
     document.getElementById("bctrl-start").className="bctrl done";
     document.getElementById("break-fab").classList.remove("running");
     document.getElementById("break-fab").classList.add("done");
+    playBeep();
     if(navigator.vibrate)navigator.vibrate([200,100,200,100,400]);
     localStorage.removeItem("break_state");return;
   }
@@ -688,7 +714,7 @@ function breakToggle(){
   const rem=breakGetRemaining();
   if(rem<=0){
     breakPausedRemaining=breakTotal;breakRunning=false;cancelAnimationFrame(breakRaf);
-    cancelRestNotif();
+    cancelRestNotif();releaseWakeLock();
     document.getElementById("bctrl-start").textContent="START";
     document.getElementById("bctrl-start").className="bctrl";
     document.getElementById("break-fab").classList.remove("running","done");
@@ -696,7 +722,7 @@ function breakToggle(){
   }
   if(breakRunning){
     breakPausedRemaining=breakGetRemaining();breakRunning=false;cancelAnimationFrame(breakRaf);
-    cancelRestNotif();
+    cancelRestNotif();releaseWakeLock();
     document.getElementById("bctrl-start").textContent="RESUME";
     document.getElementById("bctrl-start").className="bctrl";
     document.getElementById("break-fab").classList.remove("running");
@@ -708,7 +734,8 @@ function breakToggle(){
     document.getElementById("break-fab").classList.add("running");
     document.getElementById("break-fab").classList.remove("done");
     localStorage.setItem("break_state",JSON.stringify({running:true,total:breakTotal,endEpoch:breakEndEpoch}));
-    requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(Date.now()+breakPausedRemaining*1000); });
+    requestWakeLock();
+    requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(breakEndEpoch); });
     breakTick();
   }
 }
@@ -736,6 +763,7 @@ function breakRestore(){
         document.getElementById("bctrl-start").textContent="PAUSE";
         document.getElementById("bctrl-start").className="bctrl running";
         document.getElementById("break-fab").classList.add("running");
+        requestWakeLock();
         requestNotifPermission().then(ok=>{ if(ok) scheduleRestNotif(breakEndEpoch); });
         breakTick();
       }else{
