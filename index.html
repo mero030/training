@@ -481,11 +481,6 @@ function tog(id,i){
   const s=dl()[id];
   if(s&&s[i]!==undefined){
     s[i].done=!s[i].done;
-    // Update session end time on every toggle
-    const t=todayKey();
-    if(!logs[t]._meta)logs[t]._meta={};
-    if(!logs[t]._meta[day])logs[t]._meta[day]={};
-    logs[t]._meta[day].end=Date.now();
     save();renderToday();
   }
 }
@@ -589,13 +584,12 @@ function swToggle(){
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
     // Unlock session date — session is complete
     unlockSessionDate();
-    // Save workout duration to history meta
+    // Save stopwatch duration directly to history meta
     const t=activeKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[day])logs[t]._meta[day]={};
-    logs[t]._meta[day].end=Date.now();
-    if(!logs[t]._meta[day].start)logs[t]._meta[day].start=Date.now()-swSavedMs;
+    logs[t]._meta[day].durationMs=swSavedMs;
     save();
   }else{
     swStartEpoch=Date.now();swRunning=true;
@@ -936,9 +930,14 @@ function renderHist(){
     // Get duration from meta
     const meta=(data._meta&&data._meta[histDay])||{};
     let durStr="";
-    if(meta.start&&meta.end){
-      const mins=Math.round((meta.end-meta.start)/60000);
-      durStr=mins>=1?`${mins} min`:"";
+    if(meta.durationMs){
+      const totalSecs=Math.floor(meta.durationMs/1000);
+      const hrs=Math.floor(totalSecs/3600);
+      const mins=Math.floor((totalSecs%3600)/60);
+      const secs=totalSecs%60;
+      if(hrs>0) durStr=`${hrs}h ${mins}m`;
+      else if(mins>0) durStr=`${mins}m ${String(secs).padStart(2,'0')}s`;
+      else if(secs>0) durStr=`${secs}s`;
     }
     html+=`<div class="hsession" style="border-left-color:${c}">
       <div class="hshdr">
