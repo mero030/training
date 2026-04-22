@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.mero030.twa",
+    "sha256_cert_fingerprints": ["08:59:AD:86:08:F4:3D:C6:49:8E:28:F7:34:6A:23:C0:F5:D1:5F:12:55:88:BD:2D:5D:15:F9:64:88:05:44:03"]
+  }
+}]
