@@ -582,14 +582,14 @@ function swToggle(){
     document.getElementById("sw-toggle").textContent="START";
     document.getElementById("sw-toggle").className="sw-btn go";
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
-    // Unlock session date — session is complete
-    unlockSessionDate();
-    // Save stopwatch duration directly to history meta
+    // Save stopwatch duration BEFORE unlocking session date
     const t=activeKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[day])logs[t]._meta[day]={};
     logs[t]._meta[day].durationMs=swSavedMs;
+    // Now unlock session date
+    unlockSessionDate();
     save();
   }else{
     swStartEpoch=Date.now();swRunning=true;
