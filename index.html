@@ -76,6 +76,10 @@ button{cursor:pointer;}
 
 /* TODAY */
 #today-view{padding:0 14px;}
+#variant-tabs{display:flex;gap:1px;margin:10px 0 4px;}
+.vtab{flex:1;padding:7px;font-size:10.8px;font-weight:700;letter-spacing:2px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:inherit;transition:all 0.15s;}
+.vtab.on{background:var(--card);border-color:#4a9eff;color:#4a9eff;}
+.vtab.alt-on{background:#1a0a1a;border-color:#b69ef5;color:#b69ef5;}
 .phase-div{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;font-weight:700;padding:12px 0 5px;border-top:1px solid #1a1a1a;margin-top:2px;}
 .phase-div:first-child{border-top:none;padding-top:10px;}
 .excard{border:1px solid var(--border);border-left-width:3px;background:var(--card);margin-bottom:2px;transition:background 0.2s,border-color 0.2s;}
@@ -260,6 +264,10 @@ button{cursor:pointer;}
 
   <div id="scroll">
     <div id="today-view">
+      <div id="variant-tabs">
+        <button class="vtab on" id="vtab-main" onclick="setVariant('main')">MAIN</button>
+        <button class="vtab"    id="vtab-alt"  onclick="setVariant('alt')">ALT</button>
+      </div>
       <div id="main"></div>
       <div id="done-banner"><h2>SESSION COMPLETE ✓</h2><p>All exercises logged. Rest well.</p></div>
     </div>
@@ -407,13 +415,49 @@ const DEFAULT_P={
   ]},
 };
 
+const DEFAULT_ALT={
+  mon:{label:"DAY 1",sub:"UPPER",color:"#4a9eff",exercises:[
+    {id:"alt_mon_wu1",name:"Wrist Circles + Rocks",  target:"2 × 10",    phase:"Warm-Up"},
+    {id:"alt_mon_wu2",name:"Active Hang",            target:"3 × 15s",   phase:"Warm-Up"},
+    {id:"alt_mon_s1", name:"Slow Push-Ups",          target:"2 × 6",     phase:"Strength"},
+    {id:"alt_mon_s2", name:"TRX / Body Rows",        target:"2 × 8",     phase:"Strength"},
+    {id:"alt_mon_s3", name:"Dead Hang — Max Hold",   target:"1 × max",   phase:"Strength"},
+  ]},
+  tue:{label:"DAY 2",sub:"LOWER",color:"#4a9eff",exercises:[
+    {id:"alt_tue_wu1",name:"Tibialis Raises",        target:"2 × 20",    phase:"Warm-Up"},
+    {id:"alt_tue_wu2",name:"Assisted Deep Squat",    target:"2 × 30s",   phase:"Warm-Up"},
+    {id:"alt_tue_s1", name:"Tempo Squats",           target:"2 × 6",     phase:"Strength"},
+    {id:"alt_tue_s2", name:"Single-Leg Glute Bridge",target:"2 × 8",     phase:"Strength"},
+    {id:"alt_tue_s3", name:"Wall Sit — Max Hold",    target:"1 × max",   phase:"Strength"},
+  ]},
+  thu:{label:"DAY 3",sub:"UPPER MOB",color:"#4a9eff",exercises:[
+    {id:"alt_thu_p1", name:"Segmental Cat-Cow",      target:"2 × 10",    phase:"Prepare"},
+    {id:"alt_thu_e1", name:"Towel Thoracic Extension",target:"3 × 60s",  phase:"Expand"},
+    {id:"alt_thu_e2", name:"Thread the Needle",      target:"2 × 45s",   phase:"Expand"},
+    {id:"alt_thu_o1", name:"Wall Slide",             target:"2 × 10",    phase:"Own It"},
+  ]},
+  sat:{label:"DAY 4",sub:"LOWER MOB",color:"#4a9eff",exercises:[
+    {id:"alt_sat_p1", name:"Hip CARs",               target:"5 each side",phase:"Prepare"},
+    {id:"alt_sat_e1", name:"Couch Stretch",          target:"2 × 60s",   phase:"Expand"},
+    {id:"alt_sat_e2", name:"90/90 Stretch",          target:"2 × 60s",   phase:"Expand"},
+    {id:"alt_sat_o1", name:"Deep Squat to Stand",    target:"2 × 5",     phase:"Own It"},
+  ]},
+  fri:{label:"DAY 5",sub:"FULL BODY",color:"#4a9eff",exercises:[
+    {id:"alt_fri_wu1",name:"Calf Roll + Ankle Circles",target:"3 min",   phase:"Warm-Up"},
+    {id:"alt_fri_c1", name:"Push-Ups",               target:"2 × 6",     phase:"Circuit"},
+    {id:"alt_fri_c2", name:"Bodyweight Squats",      target:"2 × 8",     phase:"Circuit"},
+    {id:"alt_fri_c3", name:"Hollow Hold",            target:"2 × 20s",   phase:"Circuit"},
+  ]},
+};
+
 const DAYS=["mon","tue","thu","sat","fri"];
+const SK_ALT="training_program_alt_v1";
 const SK_LOGS="training_logs_v2";
 const SK_PROG="training_program_v3";
 
 // ── STATE ─────────────────────────────────────────────────────────────
-let day=guessDay(),histDay="mon",mode="today";
-let logs={},P={};
+let day=guessDay(),histDay="mon",mode="today",variant="main";
+let logs={},P={},ALT={};
 let confirmCb=null,expandedEx=null;
 let dragSrc=null,touchDragId=null,touchLastTarget=null;
 
@@ -421,7 +465,7 @@ function guessDay(){return({1:"mon",2:"tue",4:"thu",5:"fri"})[new Date().getDay(
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function activeKey(){
   // Use the locked session date if one exists for this day
-  const locked=localStorage.getItem('session_date_'+day);
+  const locked=localStorage.getItem('session_date_'+curDayKey());
   if(locked){
     // If today is different from locked date, check if locked date still has data
     // If it does, keep using it (user is mid-session across midnight)
@@ -429,15 +473,15 @@ function activeKey(){
     if(locked===todayKey())return locked;
     if(logs[locked]&&logs[locked][day]&&Object.keys(logs[locked][day]).length)return locked;
     // Stale lock — clear it
-    localStorage.removeItem('session_date_'+day);
+    localStorage.removeItem('session_date_'+curDayKey());
   }
   return todayKey();
 }
 function lockSessionDate(){
-  localStorage.setItem('session_date_'+day, activeKey());
+  localStorage.setItem('session_date_'+curDayKey(), activeKey());
 }
 function unlockSessionDate(){
-  localStorage.removeItem('session_date_'+day);
+  localStorage.removeItem('session_date_'+curDayKey());
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -446,30 +490,35 @@ function load(){
   try{logs=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");}catch{logs={};}
   try{const s=localStorage.getItem(SK_PROG);P=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_P));}
   catch{P=JSON.parse(JSON.stringify(DEFAULT_P));}
+  try{const s=localStorage.getItem(SK_ALT);ALT=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_ALT));}
+  catch{ALT=JSON.parse(JSON.stringify(DEFAULT_ALT));}
   // Force all day colors to blue
   Object.keys(P).forEach(dk=>{P[dk].color='#4a9eff';});
+  Object.keys(ALT).forEach(dk=>{ALT[dk].color='#4a9eff';});
 }
 let saveT;
 function save(){
   clearTimeout(saveT);
   saveT=setTimeout(()=>{
-    try{localStorage.setItem(SK_LOGS,JSON.stringify(logs));localStorage.setItem(SK_PROG,JSON.stringify(P));flash();}
+    try{localStorage.setItem(SK_LOGS,JSON.stringify(logs));localStorage.setItem(SK_PROG,JSON.stringify(P));localStorage.setItem(SK_ALT,JSON.stringify(ALT));flash();}
     catch(e){console.error(e);}
   },300);
 }
 function flash(){const b=document.getElementById("save-badge");b.classList.add("show");setTimeout(()=>b.classList.remove("show"),1500);}
 
 // ── LOG OPS ───────────────────────────────────────────────────────────
-function dl(){const t=activeKey();if(!logs[t])logs[t]={};if(!logs[t][day])logs[t][day]={};return logs[t][day];}
+function curP(){return variant==="alt"?ALT:P;}
+function curDayKey(){return variant==="alt"?day+"_alt":day;}
+function dl(){const t=activeKey();const dk=curDayKey();if(!logs[t])logs[t]={};if(!logs[t][dk])logs[t][dk]={};return logs[t][dk];}
 function sets(id){return dl()[id]||[];}
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
   d[id].push({reps:"",weight:"",note:"",done:false});
   // Record session start time on very first set of the day
-  const t=activeKey();
+  const t=activeKey();const dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
-  if(!logs[t]._meta[day])logs[t]._meta[day]={start:Date.now()};
+  if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
   // Lock session date and auto-start stopwatch on first set
   lockSessionDate();
   if(!swRunning && swSavedMs===0) swToggle();
@@ -488,7 +537,7 @@ function tog(id,i){
 // ── HISTORY DELETE ────────────────────────────────────────────────────
 function delSession(date,dk){
   confirm2("Delete Session","Delete the entire logged session for this day?",()=>{
-    if(logs[date]){delete logs[date][dk];if(!Object.keys(logs[date]).length)delete logs[date];}
+    if(logs[date]){delete logs[date][dk];delete logs[date][dk+'_alt'];if(!Object.keys(logs[date]).filter(k=>k!=='_meta').length)delete logs[date];}
     save();renderHist();
   });
 }
@@ -509,19 +558,19 @@ function delHistSet(date,dk,exId,idx){
 // ── PROGRAM EDIT ──────────────────────────────────────────────────────
 function addExercise(){
   const ex={id:uid(),name:"New Exercise",target:"3 × 10",phase:"Strength"};
-  P[day].exercises.push(ex);
+  curP()[day].exercises.push(ex);
   save();expandedEx=ex.id;renderEdit();
   setTimeout(()=>{const el=document.getElementById("ename-"+ex.id);if(el){el.focus();el.select();}},100);
 }
 function deleteExercise(id){
   confirm2("Delete Exercise","Remove this exercise from the program?",()=>{
-    P[day].exercises=P[day].exercises.filter(e=>e.id!==id);
+    curP()[day].exercises=curP()[day].exercises.filter(e=>e.id!==id);
     if(expandedEx===id)expandedEx=null;
     save();renderEdit();renderToday();
   });
 }
 function saveExEdit(id){
-  const ex=P[day].exercises.find(e=>e.id===id);if(!ex)return;
+  const ex=curP()[day].exercises.find(e=>e.id===id);if(!ex)return;
   const n=document.getElementById("ename-"+id);
   const t=document.getElementById("etarget-"+id);
   const phSelect=document.getElementById("ephase-"+id);
@@ -546,7 +595,7 @@ function onPhaseChange(id){
 // ── DRAG REORDER ──────────────────────────────────────────────────────
 function reorder(fromId,toId){
   if(fromId===toId)return;
-  const exs=P[day].exercises;
+  const exs=curP()[day].exercises;
   const fi=exs.findIndex(e=>e.id===fromId),ti=exs.findIndex(e=>e.id===toId);
   if(fi<0||ti<0)return;
   const[item]=exs.splice(fi,1);exs.splice(ti,0,item);
@@ -583,11 +632,11 @@ function swToggle(){
     document.getElementById("sw-toggle").className="sw-btn go";
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
     // Save stopwatch duration BEFORE unlocking session date
-    const t=activeKey();
+    const t=activeKey();const dk=curDayKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
-    if(!logs[t]._meta[day])logs[t]._meta[day]={};
-    logs[t]._meta[day].durationMs=swSavedMs;
+    if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
+    logs[t]._meta[dk].durationMs=swSavedMs;
     // Now unlock session date
     unlockSessionDate();
     save();
@@ -781,11 +830,11 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunn
 
 
 // ── LAST SESSION DATA ─────────────────────────────────────────────────
-function getLastSession(dk,exId){
+function getLastSession(exId){
+  const dk=curDayKey();
   const dates=Object.keys(logs)
     .filter(dt=>logs[dt][dk]&&logs[dt][dk][exId]&&logs[dt][dk][exId].length>0)
     .sort((a,b)=>b.localeCompare(a));
-  // Skip today
   const today=todayKey();
   const last=dates.find(dt=>dt!==today);
   if(!last)return null;
@@ -804,7 +853,7 @@ function fmtLastSession(sets){
 
 // ── PROGRESS ─────────────────────────────────────────────────────────
 function prog(){
-  const exs=P[day].exercises;
+  const exs=curP()[day].exercises;
   const done=exs.filter(e=>sets(e.id).some(s=>s.done)).length;
   const logged=exs.filter(e=>sets(e.id).length>0).length;
   const pct=exs.length?Math.round(logged/exs.length*100):0;
@@ -838,7 +887,7 @@ function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").repla
 
 // ── RENDER TODAY ──────────────────────────────────────────────────────
 function renderToday(){
-  const d=P[day],c=d.color;
+  const d=curP()[day],c=d.color;
   document.documentElement.style.setProperty("--acc",c);
   document.getElementById("hdr-title").innerHTML=`<span style="color:${c}">${esc(d.sub)}</span>`;
   document.getElementById("hdr-date").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
@@ -860,7 +909,7 @@ function renderToday(){
         <div style="flex:1;min-width:0">
           <div class="exname${allDone?" dn":""}">${allDone?ICO_CHECK:""}${esc(ex.name)}</div>
           <div class="extarget">${(()=>{
-            const ls=getLastSession(day,ex.id);
+            const ls=getLastSession(ex.id);
             const fmt=fmtLastSession(ls);
             return fmt?'LAST: '+esc(fmt):'TARGET: '+esc(ex.target);
           })()}</div>
@@ -887,13 +936,13 @@ function renderToday(){
 
 // ── RENDER EDIT ───────────────────────────────────────────────────────
 function renderEdit(){
-  const d=P[day];
+  const d=curP()[day];
   document.getElementById("edit-day-header").innerHTML=`
     <div class="edit-day-hdr">
       <div class="edit-day-lbl">${d.label}</div>
       <input value="${esc(d.sub)}" placeholder="Day label"
         style="font-size:14px;font-weight:700;"
-        onchange="P['${day}'].sub=this.value.trim()||P['${day}'].sub;save();renderToday();">
+        onchange="curP()['${day}'].sub=this.value.trim()||curP()['${day}'].sub;save();renderToday();">
     </div>`;
   let html="";
   d.exercises.forEach(ex=>{
@@ -943,12 +992,41 @@ function renderHist(){
     b.textContent=P[dk].sub;
   });
   const hist=Object.entries(logs)
-    .filter(([dt,data])=>data[histDay]&&Object.keys(data[histDay]).length)
+    .filter(([dt,data])=>data[histDay]&&Object.keys(data[histDay]).length||data[histDay+'_alt']&&Object.keys(data[histDay+'_alt']).length)
     .sort(([a],[b])=>b.localeCompare(a)).slice(0,15);
   const el=document.getElementById("hist-content");
   if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
   let html="";
   hist.forEach(([dt,data])=>{
+    const renderVariant=(vk,vlabel)=>{
+      const sd=data[vk]||{};
+      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&sd[id]&&sd[id].length);
+      if(!allIds.length)return'';
+      const exSrc=vk.endsWith('_alt')?ALT:P;
+      const logged=allIds.map(id=>{const f=exSrc[histDay]?.exercises.find(e=>e.id===id);return{id,name:f?f.name:id};});
+      const meta=(data._meta&&data._meta[vk])||{};
+      let durStr="";
+      if(meta.durationMs){
+        const totalSecs=Math.floor(meta.durationMs/1000);
+        const hrs=Math.floor(totalSecs/3600);
+        const mins=Math.floor((totalSecs%3600)/60);
+        const secs=totalSecs%60;
+        if(hrs>0)durStr=hrs+"h "+mins+"m";
+        else if(mins>0)durStr=mins+"m "+String(secs).padStart(2,'0')+"s";
+        else if(secs>0)durStr=secs+"s";
+      }
+      let h=\`<div style="font-size:8.1px;letter-spacing:2px;color:\${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">\${vlabel}\${durStr?' · '+durStr:''}</div>\`;
+      logged.forEach(({id,name})=>{
+        const ss=sd[id]||[];
+        h+=\`<div class="hex"><div class="hexname"><span>\${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('\${dt}','\${vk}','\${id}')">✕ remove</button></div><div class="hsets">\`;
+        ss.forEach((s,si)=>{
+          const pts=[s.reps||"—",s.note].filter(Boolean).join(" · ");
+          h+=\`<div class="hpill\${s.done?" dk":""}">\${s.done?"✓ ":""}\${esc(pts)}<button class="hdel-set" onclick="delHistSet('\${dt}','\${vk}','\${id}',\${si})">✕</button></div>\`;
+        });
+        h+=\`</div></div>\`;
+      });
+      return h;
+    };
     const sd=data[histDay]||{};
     const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&sd[id]&&sd[id].length);
     if(!allIds.length)return;
@@ -1005,7 +1083,14 @@ function setMode(m){
   if(m==="history")renderHist();
   if(m==="edit"){expandedEx=null;renderEdit();}
 }
-function setDay(d){day=d;expandedEx=null;renderToday();if(mode==="edit")renderEdit();}
+function setDay(d){day=d;expandedEx=null;variant="main";renderToday();if(mode==="edit")renderEdit();}
+function setVariant(v){
+  variant=v;
+  document.getElementById("vtab-main").className="vtab"+(v==="main"?" on":"");
+  document.getElementById("vtab-alt").className="vtab"+(v==="alt"?" alt-on":"");
+  renderToday();
+  if(mode==="edit")renderEdit();
+}
 function setHistDay(d){histDay=d;renderHist();}
 
 // ── CONFIRM ───────────────────────────────────────────────────────────
