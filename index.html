@@ -1015,22 +1015,18 @@ function renderHist(){
         else if(mins>0)durStr=mins+"m "+String(secs).padStart(2,'0')+"s";
         else if(secs>0)durStr=secs+"s";
       }
-      let h=\`<div style="font-size:8.1px;letter-spacing:2px;color:\${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">\${vlabel}\${durStr?' · '+durStr:''}</div>\`;
+      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:\${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">\${vlabel}\${durStr?' · '+durStr:''}</div>`;
       logged.forEach(({id,name})=>{
         const ss=sd[id]||[];
-        h+=\`<div class="hex"><div class="hexname"><span>\${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('\${dt}','\${vk}','\${id}')">✕ remove</button></div><div class="hsets">\`;
+        h+=`<div class="hex"><div class="hexname"><span>\${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('\${dt}','\${vk}','\${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
           const pts=[s.reps||"—",s.note].filter(Boolean).join(" · ");
-          h+=\`<div class="hpill\${s.done?" dk":""}">\${s.done?"✓ ":""}\${esc(pts)}<button class="hdel-set" onclick="delHistSet('\${dt}','\${vk}','\${id}',\${si})">✕</button></div>\`;
+          h+=`<div class="hpill\${s.done?" dk":""}">\${s.done?"✓ ":""}\${esc(pts)}<button class="hdel-set" onclick="delHistSet('\${dt}','\${vk}','\${id}',\${si})">✕</button></div>`;
         });
-        h+=\`</div></div>\`;
+        h+=`</div></div>`;
       });
       return h;
     };
-    const sd=data[histDay]||{};
-    const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&sd[id]&&sd[id].length);
-    if(!allIds.length)return;
-    const logged=allIds.map(id=>{const f=P[histDay].exercises.find(e=>e.id===id);return{id,name:f?f.name:id};});
     const d=new Date(dt+"T12:00:00");
     const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
     // Get duration from meta
