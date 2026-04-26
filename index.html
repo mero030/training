@@ -1000,7 +1000,7 @@ function renderHist(){
   hist.forEach(([dt,data])=>{
     const renderVariant=(vk,vlabel)=>{
       const sd=data[vk]||{};
-      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&sd[id]&&sd[id].length);
+      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id]));
       if(!allIds.length)return'';
       const exSrc=vk.endsWith('_alt')?ALT:P;
       const logged=allIds.map(id=>{const f=exSrc[histDay]?.exercises.find(e=>e.id===id);return{id,name:f?f.name:id};});
