@@ -124,6 +124,9 @@ button{cursor:pointer;}
 .eact-del{background:#1a0505;color:var(--rose);border-color:#3a1515;}
 .eact-save{background:#0d1a00;color:var(--green);border-color:#1e3a00;}
 .add-ex-btn{width:100%;padding:13px;background:transparent;border:1px dashed #333;color:var(--muted);font-size:9.9px;font-weight:700;letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-family:inherit;}
+.day-mgmt{display:flex;gap:6px;margin-bottom:14px;}
+.add-day-btn{flex:1;padding:10px;background:transparent;border:1px dashed #4a9eff55;color:var(--blue);font-size:9.9px;font-weight:700;letter-spacing:1px;font-family:inherit;}
+.del-day-btn{padding:10px 14px;background:#1a0505;border:1px solid #3a1515;color:var(--rose);font-size:9.9px;font-weight:700;letter-spacing:1px;font-family:inherit;}
 .edit-day-hdr{display:flex;gap:8px;margin-bottom:14px;align-items:center;}
 .edit-day-lbl{font-size:9px;color:var(--muted);letter-spacing:2px;flex-shrink:0;font-weight:700;}
 
@@ -283,6 +286,10 @@ button{cursor:pointer;}
     </div>
     <div id="edit-view">
       <div class="edit-banner">✏️ <b>Edit Mode</b> — Rename exercises, change targets, add, delete, or drag <b>≡</b> to reorder.</div>
+      <div class="day-mgmt">
+        <button class="add-day-btn" onclick="addDay()">+ ADD DAY</button>
+        <button class="del-day-btn" onclick="deleteDay(day)">DELETE DAY</button>
+      </div>
       <div id="edit-day-header"></div>
       <div id="edit-list"></div>
       <button class="add-ex-btn" onclick="addExercise()">+ ADD EXERCISE</button>
@@ -450,7 +457,12 @@ const DEFAULT_ALT={
   ]},
 };
 
-const DAYS=["mon","tue","thu","sat","fri"];
+const SK_DAYS="training_days_v1";
+let DAYS=["mon","tue","thu","sat","fri"];
+function loadDays(){
+  try{const s=localStorage.getItem(SK_DAYS);if(s)DAYS=JSON.parse(s);}catch{}
+}
+function saveDays(){localStorage.setItem(SK_DAYS,JSON.stringify(DAYS));}
 const SK_ALT="training_program_alt_v1";
 const SK_LOGS="training_logs_v2";
 const SK_PROG="training_program_v3";
@@ -480,6 +492,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 
 // ── STORAGE ───────────────────────────────────────────────────────────
 function load(){
+  loadDays();
   try{logs=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");}catch{logs={};}
   try{const s=localStorage.getItem(SK_PROG);P=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_P));}
   catch{P=JSON.parse(JSON.stringify(DEFAULT_P));}
@@ -577,6 +590,48 @@ function saveExEdit(id){
   expandedEx=null;save();renderEdit();renderToday();
 }
 function toggleEditExpand(id){expandedEx=expandedEx===id?null:id;renderEdit();}
+
+function addDay(){
+  const name=prompt("Day name (e.g. PUSH, LEGS, CARDIO):");
+  if(!name||!name.trim())return;
+  const id="day_"+uid();
+  const label="DAY "+(DAYS.length+1);
+  const sub=name.trim().toUpperCase();
+  P[id]={label,sub,color:"#4a9eff",exercises:[]};
+  ALT[id]={label,sub,color:"#4a9eff",exercises:[]};
+  DAYS.push(id);
+  saveDays();save();
+  day=id;renderTabs();renderToday();renderEdit();
+}
+
+function deleteDay(id){
+  if(DAYS.length<=1){alert("يجب أن يكون هناك يوم واحد على الأقل");return;}
+  confirm2("Delete Day","حذف هذا اليوم وكل تمارينه؟ الـ history هيفضل موجود.",()=>{
+    DAYS=DAYS.filter(d=>d!==id);
+    delete P[id];delete ALT[id];
+    saveDays();save();
+    day=DAYS[0];renderTabs();renderToday();renderEdit();
+  });
+}
+
+function renderTabs(){
+  // Re-render day tabs dynamically
+  const tabsEl=document.getElementById("day-tabs");
+  tabsEl.innerHTML=DAYS.map(dk=>
+    `<button class="dtab${dk===day?' on':''}" onclick="setDay('${dk}')" id="tab-${dk}"
+      style="border-bottom-color:${dk===day?P[dk].color:'transparent'};color:${dk===day?P[dk].color:'var(--muted)'};background:${dk===day?'var(--card)':'transparent'}">
+      ${esc(P[dk]?.sub||dk)}
+    </button>`
+  ).join('');
+  // Re-render history tabs
+  const htabsEl=document.getElementById("hist-day-tabs");
+  htabsEl.innerHTML=DAYS.map(dk=>
+    `<button class="hdt${dk===histDay?' on':''}" onclick="setHistDay('${dk}')" id="htab-${dk}"
+      style="color:${dk===histDay?P[dk].color:''};border-color:${dk===histDay?P[dk].color+'55':''}">
+      ${esc((P[dk]?.sub||dk).slice(0,6))}
+    </button>`
+  ).join('');
+}
 function onPhaseChange(id){
   const sel=document.getElementById("ephase-"+id);
   const newInput=document.getElementById("ephase-new-"+id);
@@ -1081,6 +1136,7 @@ if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.ser
 
 // ── INIT ─────────────────────────────────────────────────────────────
 load();
+renderTabs();
 renderToday();
 swRestore();
 breakRestore();
