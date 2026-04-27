@@ -1,50 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Progress Ladder</title>
-
-<style>
-/* --- KEEP YOUR ORIGINAL CSS EXACTLY (UNCHANGED) --- */
-/* (trimmed here for space, do NOT delete your existing CSS) */
-</style>
-</head>
-
-<body>
-<div id="app">
-
-<!-- YOUR ENTIRE HTML STRUCTURE STAYS EXACTLY THE SAME -->
-
-</div>
-
-<script>
-// ─────────────────────────────────────────────
-// FIX 1: SIMPLE + CORRECT SESSION SYSTEM
-// ─────────────────────────────────────────────
+// =============================
+// FIXED CORE BUGS ONLY
+// =============================
 
 function todayKey(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// REMOVE ALL SESSION LOCKING (BUG SOURCE)
-// activeKey is now ALWAYS today
+// NO SESSION LOCKING (prevents history break)
 function activeKey(){
   return todayKey();
 }
 
-// ─────────────────────────────────────────────
-// FIX 2: REMOVE BROKEN LOCK FUNCTIONS
-// ─────────────────────────────────────────────
-
-// DELETE THESE LOGICALLY (no-op replacements)
-function lockSessionDate(){}
-function unlockSessionDate(){}
-
-// ─────────────────────────────────────────────
-// FIX 3: FIX addSet (NO LOCKING ANYMORE)
-// ─────────────────────────────────────────────
+// -----------------------------
+// SAFE ADD SET (no session bugs)
+// -----------------------------
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
@@ -55,15 +25,14 @@ function addSet(id){
 
   if(!logs[t])logs[t]={};
   if(!logs[t]._meta)logs[t]._meta={};
-  if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
 
   save();
   renderToday();
 }
 
-// ─────────────────────────────────────────────
-// FIX 4: STOPWATCH FIX (REMOVE SESSION LOCK CALL)
-// ─────────────────────────────────────────────
+// -----------------------------
+// SAFE STOPWATCH SAVE
+// -----------------------------
 function swToggle(){
   if(swRunning){
     swSavedMs=swGetElapsed();
@@ -78,8 +47,8 @@ function swToggle(){
 
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
-    if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
 
+    logs[t]._meta[dk]=logs[t]._meta[dk]||{};
     logs[t]._meta[dk].durationMs=swSavedMs;
 
     save();
@@ -94,9 +63,9 @@ function swToggle(){
   }
 }
 
-// ─────────────────────────────────────────────
-// FIX 5: HISTORY FILTER FIX (IMPORTANT)
-// ─────────────────────────────────────────────
+// -----------------------------
+// FIX HISTORY (IMPORTANT)
+// -----------------------------
 function renderHist(){
   const c=P[histDay].color;
 
@@ -104,10 +73,7 @@ function renderHist(){
     .filter(([dt,data])=>{
       const a=data[histDay]||{};
       const b=data[histDay+"_alt"]||{};
-      return (
-        Object.keys(a).some(k=>k!=="_meta") ||
-        Object.keys(b).some(k=>k!=="_meta")
-      );
+      return Object.keys(a).length>0 || Object.keys(b).length>0;
     })
     .sort(([a],[b])=>b.localeCompare(a))
     .slice(0,15);
@@ -126,24 +92,23 @@ function renderHist(){
     const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
 
     const sd=data[histDay]||{};
-    const allIds=Object.keys(sd).filter(id=>id!=="_meta");
+    const ids=Object.keys(sd).filter(k=>k!=="_meta");
 
     html+=`<div class="hsession">
       <div class="hshdr">
         <div class="hsdate">${lbl}</div>
-        <div class="hscount">${allIds.length} EX</div>
+        <div class="hscount">${ids.length} EX</div>
       </div>`;
 
-    allIds.forEach(id=>{
-      const ss=sd[id]||[];
+    ids.forEach(id=>{
+      const sets=sd[id]||[];
 
       html+=`<div class="hex">
         <div class="hexname">${id}</div>
         <div class="hsets">`;
 
-      ss.forEach(s=>{
-        const txt=[s.reps,s.note].filter(Boolean).join(" · ");
-        html+=`<div class="hpill">${txt||"—"}</div>`;
+      sets.forEach(s=>{
+        html+=`<div class="hpill">${s.reps||"—"} ${s.note||""}</div>`;
       });
 
       html+=`</div></div>`;
@@ -154,12 +119,3 @@ function renderHist(){
 
   el.innerHTML=html;
 }
-
-// ─────────────────────────────────────────────
-// KEEP ALL YOUR ORIGINAL CODE BELOW UNCHANGED
-// (renderToday, edit system, UI, break timer, etc.)
-// ─────────────────────────────────────────────
-
-</script>
-</body>
-</html>
