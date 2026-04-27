@@ -91,9 +91,9 @@ button{cursor:pointer;}
 .addset-btn{background:transparent;border:1px solid #333;color:var(--soft);padding:7px 10px;font-size:9px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all 0.15s;border-radius:2px;min-width:52px;justify-content:center;}
 .addset-btn:active{opacity:0.6;transform:scale(0.94);}
 .sets-wrap{padding:0 11px 10px;}
-.sets-hdr{display:grid;grid-template-columns:24px 1fr 1fr 28px;gap:4px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid #1e1e1e;}
+.sets-hdr{display:grid;grid-template-columns:1fr 1fr 28px;gap:4px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid #1e1e1e;}
 .sh{font-size:8.1px;color:var(--muted);letter-spacing:1px;}
-.set-row{display:grid;grid-template-columns:24px 1fr 1fr 28px;gap:4px;margin-bottom:4px;align-items:center;transition:opacity 0.2s;}
+.set-row{display:grid;grid-template-columns:1fr 1fr 28px;gap:4px;margin-bottom:4px;align-items:center;transition:opacity 0.2s;}
 .set-row.faded{opacity:0.5;}
 .done-btn{width:24px;height:36px;border:1px solid #333;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:8.1px;font-weight:700;transition:all 0.15s;flex-shrink:0;border-radius:2px;padding:0;}
 .done-btn.ck{background:var(--green);border-color:var(--green);color:#0d0d0d;}
@@ -507,7 +507,7 @@ function sets(id){return dl()[id]||[];}
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
-  d[id].push({reps:"",weight:"",note:"",done:false});
+  d[id].push({reps:"",weight:"",note:"",done:true});
   // Record session start time on very first set of the day
   const t=activeKey();const dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
@@ -847,7 +847,7 @@ function fmtLastSession(sets){
 // ── PROGRESS ─────────────────────────────────────────────────────────
 function prog(){
   const exs=curP()[day].exercises;
-  const done=exs.filter(e=>sets(e.id).some(s=>s.done)).length;
+  const done=exs.filter(e=>sets(e.id).length>0).length;
   const logged=exs.filter(e=>sets(e.id).length>0).length;
   const pct=exs.length?Math.round(logged/exs.length*100):0;
   return{done,logged,total:exs.length,pct};
@@ -866,7 +866,7 @@ function updateUI(){
   document.getElementById("done-banner").classList.toggle("show",pct===100);
   P[day].exercises.forEach(ex=>{
     const card=document.getElementById("c-"+ex.id);if(!card)return;
-    const allDone=sets(ex.id).length>0&&sets(ex.id).every(s=>s.done);
+    const allDone=sets(ex.id).length>0;
     card.classList.toggle("done-all",allDone);
     if(!allDone)card.style.borderLeftColor=c;
   });
@@ -910,10 +910,9 @@ function renderToday(){
         <button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>
       </div>`;
     if(ss.length>0){
-      html+=`<div class="sets-wrap"><div class="sets-hdr"><div class="sh">#</div><div class="sh">REPS / TIME</div><div class="sh">NOTE</div><div></div></div>`;
+      html+=`<div class="sets-wrap"><div class="sets-hdr"><div class="sh">REPS / TIME</div><div class="sh">NOTE</div><div></div></div>`;
       ss.forEach((s,i)=>{
-        html+=`<div class="set-row${s.done?" faded":""}">
-          <button class="done-btn${s.done?" ck":""}" onclick="tog('${ex.id}',${i})">${s.done?ICO_CHECK:`<span>${i+1}</span>`}</button>
+        html+=`<div class="set-row">
           <input type="text" inputmode="decimal" placeholder="reps / secs" value="${esc(s.reps)}" oninput="upd('${ex.id}',${i},'reps',this.value)">
           <input type="text" placeholder="note" value="${esc(s.note)}" oninput="upd('${ex.id}',${i},'note',this.value)">
           <button class="del-btn" onclick="delSet('${ex.id}',${i})">${ICO_TRASH}</button>
