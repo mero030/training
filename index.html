@@ -990,7 +990,8 @@ function renderHist(){
   const el=document.getElementById("hist-content");
   if(!hist.length){
     const totalDates=Object.keys(logs).length;
-    el.innerHTML=`<div class="no-hist">No sessions logged yet.<br><small style="color:#333;font-size:9px;">Debug: ${totalDates} dates in storage, checking day: ${histDay}</small></div>`;
+    const sample=Object.entries(logs).slice(0,3).map(([dt,data])=>dt+':'+Object.keys(data).join(',')).join(' | ');
+    el.innerHTML=`<div class="no-hist">No sessions logged yet.<br><small style="color:#333;font-size:9px;">Dates: ${totalDates} | Day: ${histDay} | Sample: ${sample}</small></div>`;
     return;
   }
   let html="";
