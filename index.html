@@ -463,24 +463,19 @@ let dragSrc=null,touchDragId=null,touchLastTarget=null;
 
 function guessDay(){return({1:"mon",2:"tue",4:"thu",5:"fri"})[new Date().getDay()]||"mon";}
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function yesterdayKey(){
+  const d=new Date();d.setDate(d.getDate()-1);
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function activeKey(){
-  const dk=curDayKey();
-  const locked=localStorage.getItem('session_date_'+dk);
-  if(locked){
-    if(locked===todayKey())return locked;
-    // Only keep lock if stopwatch is still running (mid-session across midnight)
-    if(swRunning&&logs[locked]&&logs[locked][dk]&&Object.keys(logs[locked][dk]).filter(k=>k!=='_meta').length>0)return locked;
-    // Stale lock — clear it
-    localStorage.removeItem('session_date_'+dk);
-  }
-  return todayKey();
+  const dk=curDayKey(),today=todayKey();
+  if(logs[today]&&logs[today][dk]&&Object.keys(logs[today][dk]).filter(k=>k!=='_meta').length>0)return today;
+  const yday=yesterdayKey();
+  if(swRunning&&logs[yday]&&logs[yday][dk]&&Object.keys(logs[yday][dk]).filter(k=>k!=='_meta').length>0)return yday;
+  return today;
 }
-function lockSessionDate(){
-  localStorage.setItem('session_date_'+curDayKey(), activeKey());
-}
-function unlockSessionDate(){
-  localStorage.removeItem('session_date_'+curDayKey());
-}
+function lockSessionDate(){}
+function unlockSessionDate(){}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
 // ── STORAGE ───────────────────────────────────────────────────────────
