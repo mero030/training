@@ -985,15 +985,15 @@ function renderHist(){
     b.textContent=P[dk].sub;
   });
   const hist=Object.entries(logs)
-    .filter(([dt,data])=>(data[histDay]&&Object.keys(data[histDay]).filter(k=>k!=='_meta').length>0)||(data[histDay+'_alt']&&Object.keys(data[histDay+'_alt']).filter(k=>k!=='_meta').length>0))
+    .filter(([dt,data])=>{
+      const m=data[histDay],a=data[histDay+'_alt'];
+      const hasM=m&&typeof m==='object'&&Object.keys(m).some(k=>k!=='_meta'&&Array.isArray(m[k])&&m[k].length>0);
+      const hasA=a&&typeof a==='object'&&Object.keys(a).some(k=>k!=='_meta'&&Array.isArray(a[k])&&a[k].length>0);
+      return hasM||hasA;
+    })
     .sort(([a],[b])=>b.localeCompare(a)).slice(0,15);
   const el=document.getElementById("hist-content");
-  if(!hist.length){
-    const totalDates=Object.keys(logs).length;
-    const sample=Object.entries(logs).slice(0,3).map(([dt,data])=>dt+':'+Object.keys(data).join(',')).join(' | ');
-    el.innerHTML=`<div class="no-hist">No sessions logged yet.<br><small style="color:#333;font-size:9px;">Dates: ${totalDates} | Day: ${histDay} | Sample: ${sample}</small></div>`;
-    return;
-  }
+  if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
   let html="";
   hist.forEach(([dt,data])=>{
     const renderVariant=(vk,vlabel)=>{
