@@ -462,18 +462,25 @@ let confirmCb=null,expandedEx=null;
 let dragSrc=null,touchDragId=null,touchLastTarget=null;
 
 function guessDay(){return({1:"mon",2:"tue",4:"thu",5:"fri"})[new Date().getDay()]||"mon";}
-function todayKey(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function activeKey(){
-  const locked=localStorage.getItem('session_date_'+curDayKey());
+  const dk=curDayKey();
+  const locked=localStorage.getItem('session_date_'+dk);
   if(locked){
     if(locked===todayKey())return locked;
-    if(logs[locked]&&logs[locked][day]&&Object.keys(logs[locked][day]).length)return locked;
-    localStorage.removeItem('session_date_'+curDayKey());
+    // Only keep lock if stopwatch is still running (mid-session across midnight)
+    if(swRunning&&logs[locked]&&logs[locked][dk]&&Object.keys(logs[locked][dk]).filter(k=>k!=='_meta').length>0)return locked;
+    // Stale lock — clear it
+    localStorage.removeItem('session_date_'+dk);
   }
   return todayKey();
 }
-function lockSessionDate(){localStorage.setItem('session_date_'+curDayKey(), activeKey());}
-function unlockSessionDate(){localStorage.removeItem('session_date_'+curDayKey());}
+function lockSessionDate(){
+  localStorage.setItem('session_date_'+curDayKey(), activeKey());
+}
+function unlockSessionDate(){
+  localStorage.removeItem('session_date_'+curDayKey());
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
 // ── STORAGE ───────────────────────────────────────────────────────────
@@ -483,6 +490,7 @@ function load(){
   catch{P=JSON.parse(JSON.stringify(DEFAULT_P));}
   try{const s=localStorage.getItem(SK_ALT);ALT=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_ALT));}
   catch{ALT=JSON.parse(JSON.stringify(DEFAULT_ALT));}
+  // Force all day colors to blue
   Object.keys(P).forEach(dk=>{P[dk].color='#4a9eff';});
   Object.keys(ALT).forEach(dk=>{ALT[dk].color='#4a9eff';});
 }
@@ -505,9 +513,11 @@ function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
   d[id].push({reps:"",weight:"",note:"",done:false});
+  // Record session start time on very first set of the day
   const t=activeKey();const dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
   if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
+  // Lock session date and auto-start stopwatch on first set
   lockSessionDate();
   if(!swRunning && swSavedMs===0) swToggle();
   save();renderToday();
@@ -516,7 +526,10 @@ function upd(id,i,f,v){const s=dl()[id];if(s&&s[i]!==undefined){s[i][f]=v;save()
 function delSet(id,i){const d=dl();if(d[id]){d[id].splice(i,1);save();renderToday();}}
 function tog(id,i){
   const s=dl()[id];
-  if(s&&s[i]!==undefined){s[i].done=!s[i].done;save();renderToday();}
+  if(s&&s[i]!==undefined){
+    s[i].done=!s[i].done;
+    save();renderToday();
+  }
 }
 
 // ── HISTORY DELETE ────────────────────────────────────────────────────
@@ -600,7 +613,7 @@ function onTouchMove(e){
 }
 function onTouchEnd(){if(touchDragId){const el=document.getElementById("ec-"+touchDragId);if(el)el.style.opacity="1";}touchDragId=null;touchLastTarget=null;}
 
-// ── STOPWATCH ─────────────────────────────────────────────────────────
+// ── STOPWATCH — clock-based, survives backgrounding ───────────────────
 let swRunning=false,swStartEpoch=0,swSavedMs=0,swRaf=null;
 function swGetElapsed(){return swRunning?swSavedMs+(Date.now()-swStartEpoch):swSavedMs;}
 function swTick(){
@@ -616,11 +629,13 @@ function swToggle(){
     document.getElementById("sw-toggle").textContent="START";
     document.getElementById("sw-toggle").className="sw-btn go";
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
+    // Save stopwatch duration BEFORE unlocking session date
     const t=activeKey();const dk=curDayKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
     logs[t]._meta[dk].durationMs=swSavedMs;
+    // Now unlock session date
     unlockSessionDate();
     save();
   }else{
@@ -655,11 +670,12 @@ function swRestore(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&swRunning){cancelAnimationFrame(swRaf);swTick();}});
 
-// ── REST TIMER ────────────────────────────────────────────────────────
+// ── REST TIMER — clock-based, survives backgrounding ─────────────────
 let breakTotal=90,breakEndEpoch=0,breakRunning=false,breakRaf=null,breakPausedRemaining=90;
 let wakeLock=null;
 async function requestWakeLock(){try{if("wakeLock" in navigator){wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>{wakeLock=null;});}}catch(e){console.warn("WakeLock:",e);}}
 function releaseWakeLock(){if(wakeLock){wakeLock.release();wakeLock=null;}}
+// Re-acquire wake lock when app comes back to foreground
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunning&&!wakeLock)requestWakeLock();});
 function breakGetRemaining(){return breakRunning?Math.max(0,Math.ceil((breakEndEpoch-Date.now())/1000)):breakPausedRemaining;}
 function openBreak(){document.getElementById("break-modal").classList.add("show");updateBreakDisplay();}
@@ -683,6 +699,7 @@ function applyCustomBreak(){
   document.querySelectorAll(".bpreset").forEach(b=>b.classList.remove("on"));
   updateBreakDisplay();
 }
+// ── AUDIO BEEP ───────────────────────────────────────────────────────
 function playBeep(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
@@ -700,6 +717,8 @@ function playBeep(){
     });
   }catch(e){console.warn("Audio:",e);}
 }
+
+// ── NOTIFICATIONS — via Service Worker ───────────────────────────────
 async function requestNotifPermission(){
   if(!('Notification' in window))return false;
   if(Notification.permission==='granted')return true;
@@ -707,12 +726,20 @@ async function requestNotifPermission(){
   const result=await Notification.requestPermission();
   return result==='granted';
 }
+
 function swMsg(data){
   if('serviceWorker' in navigator && navigator.serviceWorker.controller)
     navigator.serviceWorker.controller.postMessage(data);
 }
-function scheduleRestNotif(endEpoch){swMsg({type:'scheduleRest', endEpoch});}
-function cancelRestNotif(){swMsg({type:'cancelRest'});}
+
+function scheduleRestNotif(endEpoch){
+  swMsg({type:'scheduleRest', endEpoch});
+}
+
+function cancelRestNotif(){
+  swMsg({type:'cancelRest'});
+}
+
 function breakTick(){
   if(!breakRunning)return;
   const rem=breakGetRemaining();
@@ -799,6 +826,7 @@ function breakRestore(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunning){cancelAnimationFrame(breakRaf);breakTick();}});
 
+
 // ── LAST SESSION DATA ─────────────────────────────────────────────────
 function getLastSession(exId){
   const dk=curDayKey();
@@ -814,7 +842,7 @@ function fmtLastSession(sets){
   if(!sets||!sets.length)return null;
   const logged=sets.filter(s=>s.reps||s.note);
   if(!logged.length)return null;
-  return logged.map((s)=>{
+  return logged.map((s,i)=>{
     const parts=[s.reps].filter(Boolean);
     if(s.note)parts.push(s.note);
     return parts.join(' ');
@@ -907,8 +935,8 @@ function renderToday(){
 // ── RENDER EDIT ───────────────────────────────────────────────────────
 function renderEdit(){
   const d=curP()[day];
-  document.getElementById("edit-day-header").innerHTML=
-    `<div class="edit-day-hdr">
+  document.getElementById("edit-day-header").innerHTML=`
+    <div class="edit-day-hdr">
       <div class="edit-day-lbl">${d.label}</div>
       <input value="${esc(d.sub)}" placeholder="Day label"
         style="font-size:14px;font-weight:700;"
@@ -962,10 +990,7 @@ function renderHist(){
     b.textContent=P[dk].sub;
   });
   const hist=Object.entries(logs)
-    .filter(([dt,data])=>
-      (data[histDay]&&Object.keys(data[histDay]).filter(k=>k!=='_meta').length>0)||
-      (data[histDay+'_alt']&&Object.keys(data[histDay+'_alt']).filter(k=>k!=='_meta').length>0)
-    )
+    .filter(([dt,data])=>(data[histDay]&&Object.keys(data[histDay]).filter(k=>k!=='_meta').length>0)||(data[histDay+'_alt']&&Object.keys(data[histDay+'_alt']).filter(k=>k!=='_meta').length>0))
     .sort(([a],[b])=>b.localeCompare(a)).slice(0,15);
   const el=document.getElementById("hist-content");
   if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
@@ -988,35 +1013,50 @@ function renderHist(){
         else if(mins>0)durStr=mins+"m "+String(secs).padStart(2,'0')+"s";
         else if(secs>0)durStr=secs+"s";
       }
-      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">${vlabel}${durStr?' · '+durStr:''}</div>`;
+      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:\${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">\${vlabel}\${durStr?' · '+durStr:''}</div>`;
       logged.forEach(({id,name})=>{
         const ss=sd[id]||[];
-        h+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
+        h+=`<div class="hex"><div class="hexname"><span>\${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('\${dt}','\${vk}','\${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
           const pts=[s.reps||"—",s.note].filter(Boolean).join(" · ");
-          h+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${vk}','${id}',${si})">✕</button></div>`;
+          h+=`<div class="hpill\${s.done?" dk":""}">\${s.done?"✓ ":""}\${esc(pts)}<button class="hdel-set" onclick="delHistSet('\${dt}','\${vk}','\${id}',\${si})">✕</button></div>`;
         });
         h+=`</div></div>`;
       });
       return h;
     };
-    const mainContent=renderVariant(histDay,'MAIN');
-    const altContent=renderVariant(histDay+'_alt','ALT');
-    if(!mainContent&&!altContent)return;
-    const totalEx=[
-      ...Object.keys(data[histDay]||{}).filter(k=>k!=='_meta'&&Array.isArray((data[histDay]||{})[k])),
-      ...Object.keys(data[histDay+'_alt']||{}).filter(k=>k!=='_meta'&&Array.isArray((data[histDay+'_alt']||{})[k]))
-    ].length;
     const d=new Date(dt+"T12:00:00");
     const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+    // Get duration from meta
+    const meta=(data._meta&&data._meta[histDay])||{};
+    let durStr="";
+    if(meta.durationMs){
+      const totalSecs=Math.floor(meta.durationMs/1000);
+      const hrs=Math.floor(totalSecs/3600);
+      const mins=Math.floor((totalSecs%3600)/60);
+      const secs=totalSecs%60;
+      if(hrs>0) durStr=`${hrs}h ${mins}m`;
+      else if(mins>0) durStr=`${mins}m ${String(secs).padStart(2,'0')}s`;
+      else if(secs>0) durStr=`${secs}s`;
+    }
     html+=`<div class="hsession" style="border-left-color:${c}">
       <div class="hshdr">
         <div class="hsdate" style="color:${c}">${lbl}</div>
-        <div class="hscount">${totalEx} EX</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <div class="hscount">${logged.length} EX${durStr?" · "+durStr:""}</div>
+        </div>
         <button class="hdel-session" onclick="delSession('${dt}','${histDay}')">${ICO_TRASH}</button>
-      </div>
-      ${mainContent}${altContent}
-    </div>`;
+      </div>`;
+    logged.forEach(({id,name})=>{
+      const ss=sd[id]||[];
+      html+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${histDay}','${id}')">✕ remove</button></div><div class="hsets">`;
+      ss.forEach((s,si)=>{
+        const pts=[s.reps||"—",s.weight,s.note].filter(Boolean).join(" · ");
+        html+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${histDay}','${id}',${si})">✕</button></div>`;
+      });
+      html+=`</div></div>`;
+    });
+    html+=`</div>`;
   });
   el.innerHTML=html||`<div class="no-hist">No sessions logged yet.</div>`;
 }
