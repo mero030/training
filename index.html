@@ -998,65 +998,42 @@ function renderHist(){
   hist.forEach(([dt,data])=>{
     const renderVariant=(vk,vlabel)=>{
       const sd=data[vk]||{};
-      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id]));
+      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id])&&sd[id].length>0);
       if(!allIds.length)return'';
       const exSrc=vk.endsWith('_alt')?ALT:P;
-      const logged=allIds.map(id=>{const f=exSrc[histDay]?.exercises.find(e=>e.id===id);return{id,name:f?f.name:id};});
       const meta=(data._meta&&data._meta[vk])||{};
       let durStr="";
       if(meta.durationMs){
-        const totalSecs=Math.floor(meta.durationMs/1000);
-        const hrs=Math.floor(totalSecs/3600);
-        const mins=Math.floor((totalSecs%3600)/60);
-        const secs=totalSecs%60;
-        if(hrs>0)durStr=hrs+"h "+mins+"m";
-        else if(mins>0)durStr=mins+"m "+String(secs).padStart(2,'0')+"s";
-        else if(secs>0)durStr=secs+"s";
+        const tot=Math.floor(meta.durationMs/1000);
+        const h=Math.floor(tot/3600),m=Math.floor((tot%3600)/60),s=tot%60;
+        durStr=h>0?h+"h "+m+"m":m>0?m+"m "+String(s).padStart(2,'0')+"s":s>0?s+"s":"";
       }
-      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:\${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">\${vlabel}\${durStr?' · '+durStr:''}</div>`;
-      logged.forEach(({id,name})=>{
+      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:${vlabel==='ALT'?'#b69ef5':c};padding:6px 14px 4px;font-weight:700;">${vlabel}${durStr?' · '+durStr:''}</div>`;
+      allIds.forEach(id=>{
+        const f=exSrc[histDay]?.exercises.find(e=>e.id===id);
+        const name=f?f.name:id;
         const ss=sd[id]||[];
-        h+=`<div class="hex"><div class="hexname"><span>\${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('\${dt}','\${vk}','\${id}')">✕ remove</button></div><div class="hsets">`;
+        h+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
           const pts=[s.reps||"—",s.note].filter(Boolean).join(" · ");
-          h+=`<div class="hpill\${s.done?" dk":""}">\${s.done?"✓ ":""}\${esc(pts)}<button class="hdel-set" onclick="delHistSet('\${dt}','\${vk}','\${id}',\${si})">✕</button></div>`;
+          h+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${vk}','${id}',${si})">✕</button></div>`;
         });
         h+=`</div></div>`;
       });
       return h;
     };
+    const mainContent=renderVariant(histDay,'MAIN');
+    const altContent=renderVariant(histDay+'_alt','ALT');
+    if(!mainContent&&!altContent)return;
     const d=new Date(dt+"T12:00:00");
     const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
-    // Get duration from meta
-    const meta=(data._meta&&data._meta[histDay])||{};
-    let durStr="";
-    if(meta.durationMs){
-      const totalSecs=Math.floor(meta.durationMs/1000);
-      const hrs=Math.floor(totalSecs/3600);
-      const mins=Math.floor((totalSecs%3600)/60);
-      const secs=totalSecs%60;
-      if(hrs>0) durStr=`${hrs}h ${mins}m`;
-      else if(mins>0) durStr=`${mins}m ${String(secs).padStart(2,'0')}s`;
-      else if(secs>0) durStr=`${secs}s`;
-    }
     html+=`<div class="hsession" style="border-left-color:${c}">
       <div class="hshdr">
         <div class="hsdate" style="color:${c}">${lbl}</div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-          <div class="hscount">${logged.length} EX${durStr?" · "+durStr:""}</div>
-        </div>
         <button class="hdel-session" onclick="delSession('${dt}','${histDay}')">${ICO_TRASH}</button>
-      </div>`;
-    logged.forEach(({id,name})=>{
-      const ss=sd[id]||[];
-      html+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${histDay}','${id}')">✕ remove</button></div><div class="hsets">`;
-      ss.forEach((s,si)=>{
-        const pts=[s.reps||"—",s.weight,s.note].filter(Boolean).join(" · ");
-        html+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${histDay}','${id}',${si})">✕</button></div>`;
-      });
-      html+=`</div></div>`;
-    });
-    html+=`</div>`;
+      </div>
+      ${mainContent}${altContent}
+    </div>`;
   });
   el.innerHTML=html||`<div class="no-hist">No sessions logged yet.</div>`;
 }
