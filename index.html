@@ -988,7 +988,11 @@ function renderHist(){
     .filter(([dt,data])=>(data[histDay]&&Object.keys(data[histDay]).filter(k=>k!=='_meta').length>0)||(data[histDay+'_alt']&&Object.keys(data[histDay+'_alt']).filter(k=>k!=='_meta').length>0))
     .sort(([a],[b])=>b.localeCompare(a)).slice(0,15);
   const el=document.getElementById("hist-content");
-  if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
+  if(!hist.length){
+    const totalDates=Object.keys(logs).length;
+    el.innerHTML=`<div class="no-hist">No sessions logged yet.<br><small style="color:#333;font-size:9px;">Debug: ${totalDates} dates in storage, checking day: ${histDay}</small></div>`;
+    return;
+  }
   let html="";
   hist.forEach(([dt,data])=>{
     const renderVariant=(vk,vlabel)=>{
