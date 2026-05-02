@@ -64,6 +64,9 @@ button{cursor:pointer;}
 .sw-btn.go{border-color:var(--blue);color:var(--blue);}
 .sw-btn.stop{border-color:var(--rose);color:var(--rose);}
 .sw-btn.reset{border-color:var(--muted);color:var(--muted);}
+.sw-btn.finish{border-color:var(--green);color:var(--green);background:#0d1a00;}
+.sw-btn.new-session{border-color:var(--green);color:var(--green);background:#0d1a0d;display:none;}
+.sw-btn.new-session.show{display:flex;}
 
 /* DAY TABS */
 #day-tabs{display:flex;border-top:1px solid var(--border);}
@@ -253,7 +256,8 @@ button{cursor:pointer;}
       <div id="sw-display">00:00</div>
       <div id="sw-btns">
         <button class="sw-btn go" id="sw-toggle" onclick="swToggle()">START</button>
-        <button class="sw-btn reset" onclick="swReset()">RESET</button>
+        <button class="sw-btn reset" id="sw-reset" onclick="swReset()">RESET</button>
+        <button class="sw-btn new-session" id="sw-newsession" onclick="newSession()">✓ NEW SESSION</button>
       </div>
     </div>
     <div id="day-tabs">
@@ -647,21 +651,23 @@ function swToggle(){
     swSavedMs=swGetElapsed();swRunning=false;cancelAnimationFrame(swRaf);
     document.getElementById("sw-toggle").textContent="START";
     document.getElementById("sw-toggle").className="sw-btn go";
-    // Save stopwatch duration BEFORE resetting
+    document.getElementById("sw-finish").style.display="flex";
+    // Save stopwatch duration
     const t=activeKey();const dk=curDayKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
     logs[t]._meta[dk].durationMs=swSavedMs;
     unlockSessionDate();
-    // Reset swSavedMs so next session starts fresh
-    swSavedMs=0;swStartEpoch=0;
-    localStorage.removeItem("sw_state");
     save();
+    // Show new session button
+    document.getElementById("sw-reset").style.display="none";
+    document.getElementById("sw-newsession").classList.add("show");
   }else{
     swStartEpoch=Date.now();swRunning=true;
     document.getElementById("sw-toggle").textContent="STOP";
     document.getElementById("sw-toggle").className="sw-btn stop";
+    document.getElementById("sw-finish").style.display="none";
     localStorage.setItem("sw_state",JSON.stringify({running:true,startEpoch:swStartEpoch,savedMs:swSavedMs}));
     swTick();
   }
@@ -671,8 +677,49 @@ function swReset(){
   document.getElementById("sw-display").textContent="00:00";
   document.getElementById("sw-toggle").textContent="START";
   document.getElementById("sw-toggle").className="sw-btn go";
+  document.getElementById("sw-reset").style.display="";
+  document.getElementById("sw-newsession").classList.remove("show");
   localStorage.removeItem("sw_state");
 }
+function newSession(){
+  // Reset stopwatch
+  swSavedMs=0;swStartEpoch=0;
+  localStorage.removeItem("sw_state");
+  document.getElementById("sw-display").textContent="00:00";
+  document.getElementById("sw-toggle").textContent="START";
+  document.getElementById("sw-toggle").className="sw-btn go";
+  document.getElementById("sw-reset").style.display="";
+  document.getElementById("sw-newsession").classList.remove("show");
+  // Clear today's logs for this day+variant so it starts fresh
+  const today=todayKey();
+  const dk=curDayKey();
+  if(logs[today]&&logs[today][dk]){
+    delete logs[today][dk];
+    if(logs[today]._meta&&logs[today]._meta[dk])delete logs[today]._meta[dk];
+  }
+  save();renderToday();
+}
+function swFinish(){
+  // Save duration, clear session, reset everything
+  const t=activeKey();const dk=curDayKey();
+  if(swSavedMs>0){
+    if(!logs[t])logs[t]={};
+    if(!logs[t]._meta)logs[t]._meta={};
+    if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
+    logs[t]._meta[dk].durationMs=swSavedMs;
+  }
+  unlockSessionDate();
+  swSavedMs=0;swStartEpoch=0;
+  document.getElementById("sw-display").textContent="00:00";
+  document.getElementById("sw-finish").style.display="none";
+  localStorage.removeItem("sw_state");
+  save();
+  // Small visual confirmation
+  const btn=document.getElementById("sw-finish");
+  btn.textContent="✓ SAVED";
+  setTimeout(()=>{btn.style.display="none";btn.textContent="✓ FINISH";},1000);
+}
+
 function swRestore(){
   try{
     const s=JSON.parse(localStorage.getItem("sw_state")||"null");if(!s)return;
