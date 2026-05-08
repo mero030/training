@@ -732,6 +732,8 @@ function swRestore(){
       swSavedMs=s.savedMs||0;
       const tot=Math.floor(swSavedMs/1000),m=Math.floor(tot/60),sc=tot%60;
       document.getElementById("sw-display").textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+      // Show finish button if stopped with time recorded
+      if(swSavedMs>0)document.getElementById("sw-finish").style.display="flex";
     }
   }catch(e){}
 }
