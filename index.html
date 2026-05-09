@@ -86,10 +86,6 @@ button{cursor:pointer;}
 .phase-div:first-child{border-top:none;padding-top:10px;}
 .excard{border:1px solid var(--border);border-left-width:3px;background:var(--card);margin-bottom:2px;transition:background 0.2s,border-color 0.2s;}
 .excard.done-all{background:#111a0f;border-color:#1e3320;border-left-color:var(--green)!important;}
-.excard.skipped{background:#111111;border-color:#2a2a2a;border-left-color:#444!important;opacity:0.55;}
-.skip-btn{background:transparent;border:1px solid #333;color:#444;padding:7px 10px;font-size:9px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all 0.15s;border-radius:2px;min-width:52px;justify-content:center;}
-.skip-btn:active{opacity:0.6;transform:scale(0.94);}
-.skip-btn.skipped-on{border-color:#555;color:#666;background:#1a1a1a;}
 .exhdr{padding:10px 11px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 .exname{font-size:13.5px;font-weight:700;letter-spacing:0.3px;display:flex;align-items:center;gap:5px;flex:1;min-width:0;}
 .exname.dn{color:var(--green);}
@@ -101,6 +97,8 @@ button{cursor:pointer;}
 .sh{font-size:8.1px;color:var(--muted);letter-spacing:1px;}
 .set-row{display:grid;grid-template-columns:1fr 1fr 28px;gap:4px;margin-bottom:4px;align-items:center;transition:opacity 0.2s;}
 .set-row.faded{opacity:0.5;}
+.done-btn{width:24px;height:36px;border:1px solid #333;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:8.1px;font-weight:700;transition:all 0.15s;flex-shrink:0;border-radius:2px;padding:0;}
+.done-btn.ck{background:var(--green);border-color:var(--green);color:#0d0d0d;}
 .del-btn{background:transparent;border:none;color:#2a2a2a;padding:4px;display:flex;align-items:center;justify-content:center;transition:color 0.15s;width:28px;height:36px;}
 .del-btn:active{color:var(--rose);}
 .empty-hint{font-size:9.9px;color:#2a2a2a;font-style:italic;padding:0 11px 10px;}
@@ -332,19 +330,6 @@ button{cursor:pointer;}
   </div>
 </div>
 
-<!-- ADD DAY MODAL -->
-<div id="addday-modal" style="display:none;position:fixed;inset:0;background:#000b;z-index:300;align-items:center;justify-content:center;padding:24px;">
-  <div style="background:var(--card);border:1px solid var(--border);border-top:2px solid var(--blue);padding:24px;width:100%;max-width:320px;">
-    <h3 style="font-size:14.4px;font-weight:900;color:var(--blue);margin-bottom:8px;letter-spacing:1px;">ADD DAY</h3>
-    <p style="font-size:10.8px;color:var(--soft);margin-bottom:14px;line-height:1.5;">Enter a name for the new day (e.g. PUSH, LEGS, CARDIO)</p>
-    <input id="addday-input" placeholder="Day name" style="margin-bottom:14px;">
-    <div style="display:flex;gap:6px;">
-      <button class="conf-btn" style="flex:1;padding:10px;font-size:9.9px;font-weight:700;letter-spacing:1px;border:none;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--soft);" onclick="closeAddDay()">Cancel</button>
-      <button class="conf-btn" style="flex:1;padding:10px;font-size:9.9px;font-weight:700;letter-spacing:1px;border:none;font-family:inherit;cursor:pointer;background:var(--blue);color:#fff;" onclick="confirmAddDay()">Add</button>
-    </div>
-  </div>
-</div>
-
 <!-- CONFIRM MODAL -->
 <div id="confirm-modal">
   <div id="confirm-box">
@@ -360,7 +345,7 @@ button{cursor:pointer;}
 <script>
 // ── PROGRAM ───────────────────────────────────────────────────────────
 const DEFAULT_P={
-  mon:{label:"DAY 1",sub:"UPPER",color:DEFAULT_COLOR,exercises:[
+  mon:{label:"DAY 1",sub:"UPPER",color:"#4a9eff",exercises:[
     {id:"mon_wu1",name:"External Rotation",        target:"2 × 12–15",  phase:"Warm-Up"},
     {id:"mon_wu2",name:"Active Hang",              target:"5 × 15s",    phase:"Warm-Up"},
     {id:"mon_wu3",name:"Scapular Pull-Ups",        target:"3 × 6",      phase:"Warm-Up"},
@@ -373,7 +358,7 @@ const DEFAULT_P={
     {id:"mon_s5", name:"Prone Y Raises",           target:"3 × 12",     phase:"Strength"},
     {id:"mon_s6", name:"Dead Hang — Max Hold",     target:"1 × max",    phase:"Strength"},
   ]},
-  tue:{label:"DAY 2",sub:"LOWER",color:DEFAULT_COLOR,exercises:[
+  tue:{label:"DAY 2",sub:"LOWER",color:"#4a9eff",exercises:[
     {id:"tue_wu1",name:"Tibialis Raises",          target:"3 × 20",     phase:"Warm-Up"},
     {id:"tue_wu2",name:"Slow Calf Raises",         target:"3 × 15",     phase:"Warm-Up"},
     {id:"tue_wu3",name:"Assisted Deep Squat",      target:"2 × 45s",    phase:"Warm-Up"},
@@ -384,11 +369,11 @@ const DEFAULT_P={
     {id:"tue_s5", name:"Side-Lying Leg Raises",    target:"3 × 12–15",  phase:"Strength"},
     {id:"tue_s6", name:"Wall Sit — Max Hold",      target:"1 × max",    phase:"Strength"},
   ]},
-  mob:{label:"DAY 3",sub:"MOBILITY",color:DEFAULT_COLOR,exercises:[
+  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
     {id:"mob_1",  name:"Tom Merrick Full Body Flexibility", target:"60 min follow along", phase:"Session"},
     {id:"mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser", phase:"Session"},
   ]},
-  cor:{label:"DAY 4",sub:"CORE",color:DEFAULT_COLOR,exercises:[
+  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
     {id:"cor_p1", name:"Dead Bug",            target:"3 × 8 each side", phase:"Prepare"},
     {id:"cor_p2", name:"Bird Dog",            target:"3 × 8 each side", phase:"Prepare"},
     {id:"cor_s1", name:"Hollow Hold",         target:"3 × 20–30s",      phase:"Strength"},
@@ -401,25 +386,25 @@ const DEFAULT_P={
 };
 
 const DEFAULT_ALT={
-  mon:{label:"DAY 1",sub:"UPPER",color:DEFAULT_COLOR,exercises:[
+  mon:{label:"DAY 1",sub:"UPPER",color:"#4a9eff",exercises:[
     {id:"alt_mon_wu1",name:"Active Hang",          target:"3 × 15s",   phase:"Warm-Up"},
     {id:"alt_mon_wu2",name:"Wrist Circles + Rocks",target:"2 × 10",    phase:"Warm-Up"},
     {id:"alt_mon_s1", name:"Slow Push-Ups",        target:"2 × 6",     phase:"Strength"},
     {id:"alt_mon_s2", name:"TRX / Body Rows",      target:"2 × 8",     phase:"Strength"},
     {id:"alt_mon_s3", name:"Dead Hang — Max Hold", target:"1 × max",   phase:"Strength"},
   ]},
-  tue:{label:"DAY 2",sub:"LOWER",color:DEFAULT_COLOR,exercises:[
+  tue:{label:"DAY 2",sub:"LOWER",color:"#4a9eff",exercises:[
     {id:"alt_tue_wu1",name:"Tibialis Raises",          target:"2 × 20",  phase:"Warm-Up"},
     {id:"alt_tue_wu2",name:"Assisted Deep Squat",      target:"2 × 30s", phase:"Warm-Up"},
     {id:"alt_tue_s1", name:"Tempo Squats",             target:"2 × 6",   phase:"Strength"},
     {id:"alt_tue_s2", name:"Single-Leg Glute Bridge",  target:"2 × 8",   phase:"Strength"},
     {id:"alt_tue_s3", name:"Wall Sit — Max Hold",      target:"1 × max", phase:"Strength"},
   ]},
-  mob:{label:"DAY 3",sub:"MOBILITY",color:DEFAULT_COLOR,exercises:[
+  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
     {id:"alt_mob_1",  name:"Tom Merrick Full Body Flexibility", target:"30 min — first half only", phase:"Session"},
     {id:"alt_mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser",     phase:"Session"},
   ]},
-  cor:{label:"DAY 4",sub:"CORE",color:DEFAULT_COLOR,exercises:[
+  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
     {id:"alt_cor_p1", name:"Dead Bug",        target:"2 × 8 each side", phase:"Prepare"},
     {id:"alt_cor_s1", name:"Hollow Hold",     target:"2 × 20s",         phase:"Strength"},
     {id:"alt_cor_s2", name:"Reverse Crunch",  target:"2 × 10",          phase:"Strength"},
@@ -429,7 +414,6 @@ const DEFAULT_ALT={
 
 // FIX 1: DEFAULT_DAYS matches DEFAULT_P keys exactly
 const DEFAULT_DAYS=["mon","tue","mob","cor"];
-const DEFAULT_COLOR="#4a9eff";
 
 const SK_DAYS="training_days_v2";
 let DAYS=[...DEFAULT_DAYS];
@@ -442,7 +426,7 @@ function loadDays(){
       // Validate that parsed days are non-empty array
       if(Array.isArray(parsed)&&parsed.length>0)DAYS=parsed;
     }
-  }catch(e){console.warn("loadDays failed:",e);}
+  }catch{}
 }
 function saveDays(){localStorage.setItem(SK_DAYS,JSON.stringify(DAYS));}
 
@@ -512,11 +496,11 @@ function load(){
 
   // Ensure all days in DAYS have program entries; add defaults if missing
   DAYS.forEach(dk=>{
-    if(!P[dk])P[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:DEFAULT_COLOR,exercises:[]};
-    if(!ALT[dk])ALT[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:DEFAULT_COLOR,exercises:[]};
+    if(!P[dk])P[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
+    if(!ALT[dk])ALT[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
     // Force colors to blue
-    P[dk].color=DEFAULT_COLOR;
-    ALT[dk].color=DEFAULT_COLOR;
+    P[dk].color='#4a9eff';
+    ALT[dk].color='#4a9eff';
   });
 
   // FIX 5: Initialize day and histDay to a valid DAYS entry
@@ -548,19 +532,10 @@ function dl(){
   return logs[t][dk];
 }
 function sets(id){return dl()[id]||[];}
-function isSkipped(id){const d=dl();return d['__skip__'+id]===true;}
-function skipEx(id){
-  const d=dl();
-  const key='__skip__'+id;
-  d[key]=!d[key];
-  // If skipping, remove any logged sets for this exercise
-  if(d[key])delete d[id];
-  save();renderToday();
-}
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
-  d[id].push({reps:"",note:"",done:true});
+  d[id].push({reps:"",weight:"",note:"",done:true});
   // Record session start time on first set
   const t=activeKey(),dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
@@ -578,6 +553,10 @@ function upd(id,i,f,v){
 function delSet(id,i){
   const d=dl();
   if(d[id]){d[id].splice(i,1);save();renderToday();}
+}
+function tog(id,i){
+  const s=dl()[id];
+  if(s&&s[i]!==undefined){s[i].done=!s[i].done;save();renderToday();}
 }
 
 // ── HISTORY DELETE ────────────────────────────────────────────────────
@@ -640,23 +619,13 @@ function saveExEdit(id){
 function toggleEditExpand(id){expandedEx=expandedEx===id?null:id;renderEdit();}
 
 function addDay(){
-  const modal=document.getElementById("addday-modal");
-  modal.style.display="flex";
-  const inp=document.getElementById("addday-input");
-  inp.value="";
-  setTimeout(()=>inp.focus(),50);
-  inp.onkeydown=e=>{if(e.key==="Enter")confirmAddDay();if(e.key==="Escape")closeAddDay();};
-}
-function closeAddDay(){document.getElementById("addday-modal").style.display="none";}
-function confirmAddDay(){
-  const name=document.getElementById("addday-input").value.trim();
-  if(!name){document.getElementById("addday-input").focus();return;}
-  closeAddDay();
+  const name=prompt("Day name (e.g. PUSH, LEGS, CARDIO):");
+  if(!name||!name.trim())return;
   const id="day_"+uid();
   const label="DAY "+(DAYS.length+1);
-  const sub=name.toUpperCase();
-  P[id]={label,sub,color:DEFAULT_COLOR,exercises:[]};
-  ALT[id]={label,sub,color:DEFAULT_COLOR,exercises:[]};
+  const sub=name.trim().toUpperCase();
+  P[id]={label,sub,color:"#4a9eff",exercises:[]};
+  ALT[id]={label,sub,color:"#4a9eff",exercises:[]};
   DAYS.push(id);
   saveDays();save();
   day=id;renderTabs();renderToday();renderEdit();
@@ -679,7 +648,7 @@ function renderTabs(){
   const tabsEl=document.getElementById("day-tabs");
   tabsEl.innerHTML=DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
-    const color=P[dk]?P[dk].color:DEFAULT_COLOR;
+    const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===day;
     return`<button class="dtab${on?" on":""}" onclick="setDay('${dk}')" id="tab-${dk}"
       style="border-bottom-color:${on?color:"transparent"};color:${on?color:"var(--muted)"};background:${on?"var(--card)":"transparent"}">
@@ -690,7 +659,7 @@ function renderTabs(){
   const htabsEl=document.getElementById("hist-day-tabs");
   htabsEl.innerHTML=DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
-    const color=P[dk]?P[dk].color:DEFAULT_COLOR;
+    const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===histDay;
     return`<button class="hdt${on?" on":""}" onclick="setHistDay('${dk}')" id="htab-${dk}"
       style="color:${on?color:""};border-color:${on?color+"55":""}">
@@ -1030,11 +999,9 @@ function fmtLastSession(sets){
 // ── PROGRESS ─────────────────────────────────────────────────────────
 function prog(){
   const exs=curP()[day]?curP()[day].exercises:[];
-  const active=exs.filter(e=>!isSkipped(e.id));
-  const logged=active.filter(e=>sets(e.id).some(s=>s.reps||s.note)).length;
-  const total=active.length;
-  const pct=total?Math.round(logged/total*100):0;
-  return{logged,total,pct};
+  const logged=exs.filter(e=>sets(e.id).length>0).length;
+  const pct=exs.length?Math.round(logged/exs.length*100):0;
+  return{logged,total:exs.length,pct};
 }
 function updateUI(){
   const{logged,total,pct}=prog(),c=P[day].color;
@@ -1050,11 +1017,9 @@ function updateUI(){
   document.getElementById("done-banner").classList.toggle("show",pct===100&&total>0);
   (curP()[day]||{exercises:[]}).exercises.forEach(ex=>{
     const card=document.getElementById("c-"+ex.id);if(!card)return;
-    const skipped=isSkipped(ex.id);
-    const allDone=!skipped&&sets(ex.id).some(s=>s.reps||s.note);
+    const allDone=sets(ex.id).length>0;
     card.classList.toggle("done-all",allDone);
-    card.classList.toggle("skipped",skipped);
-    if(!allDone&&!skipped)card.style.borderLeftColor=c;
+    if(!allDone)card.style.borderLeftColor=c;
   });
 }
 
@@ -1075,7 +1040,7 @@ function renderToday(){
   // Update day tab styles
   DAYS.forEach(dk=>{
     const t=document.getElementById("tab-"+dk);if(!t)return;
-    const on=dk===day,col=P[dk]?P[dk].color:DEFAULT_COLOR;
+    const on=dk===day,col=P[dk]?P[dk].color:"#4a9eff";
     t.className="dtab"+(on?" on":"");
     t.style.borderBottomColor=on?col:"transparent";
     t.style.color=on?col:"var(--muted)";
@@ -1083,26 +1048,21 @@ function renderToday(){
   });
   let html="",lastPhase=null;
   d.exercises.forEach(ex=>{
-    const ss=sets(ex.id);
-    const skipped=isSkipped(ex.id);
-    const allDone=!skipped&&ss.length>0&&ss.some(s=>s.reps||s.note);
+    const ss=sets(ex.id),allDone=ss.length>0;
     if(ex.phase!==lastPhase){html+=`<div class="phase-div">${esc(ex.phase)}</div>`;lastPhase=ex.phase;}
-    html+=`<div class="excard${allDone?" done-all":""}${skipped?" skipped":""}" id="c-${ex.id}" style="border-left-color:${allDone?"var(--green)":skipped?"#444":c}">
+    html+=`<div class="excard${allDone?" done-all":""}" id="c-${ex.id}" style="border-left-color:${allDone?"var(--green)":c}">
       <div class="exhdr">
         <div style="flex:1;min-width:0">
-          <div class="exname${allDone?" dn":""}">${allDone?ICO_CHECK:""}${esc(ex.name)}${skipped?`<span style="font-size:9px;color:#555;font-weight:400;margin-left:4px;">SKIPPED</span>`:""}</div>
+          <div class="exname${allDone?" dn":""}">${allDone?ICO_CHECK:""}${esc(ex.name)}</div>
           <div class="extarget">${(()=>{
             const ls=getLastSession(ex.id);
             const fmt=fmtLastSession(ls);
             return fmt?"LAST: "+esc(fmt):"TARGET: "+esc(ex.target);
           })()}</div>
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;">
-          <button class="skip-btn${skipped?" skipped-on":""}" onclick="skipEx('${ex.id}')">${skipped?"↩ UNDO":"⊘ SKIP"}</button>
-          ${skipped?"":`<button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>`}
-        </div>
+        <button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>
       </div>`;
-    if(!skipped&&ss.length>0){
+    if(ss.length>0){
       html+=`<div class="sets-wrap"><div class="sets-hdr"><div class="sh">REPS / TIME</div><div class="sh">NOTE</div><div></div></div>`;
       ss.forEach((s,i)=>{
         html+=`<div class="set-row">
@@ -1112,7 +1072,7 @@ function renderToday(){
         </div>`;
       });
       html+=`</div>`;
-    }else if(!skipped){
+    }else{
       html+=`<div class="empty-hint">Tap + SET to log</div>`;
     }
     html+=`</div>`;
@@ -1170,11 +1130,11 @@ function renderEdit(){
 
 // ── RENDER HISTORY ────────────────────────────────────────────────────
 function renderHist(){
-  const c=P[histDay]?P[histDay].color:DEFAULT_COLOR;
+  const c=P[histDay]?P[histDay].color:"#4a9eff";
   // Update tab styles
   DAYS.forEach(dk=>{
     const b=document.getElementById("htab-"+dk);if(!b)return;
-    const on=dk===histDay,col=P[dk]?P[dk].color:DEFAULT_COLOR;
+    const on=dk===histDay,col=P[dk]?P[dk].color:"#4a9eff";
     b.className="hdt"+(on?" on":"");
     b.style.color=on?col:"";
     b.style.borderColor=on?col+"55":"";
