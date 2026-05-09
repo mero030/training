@@ -101,6 +101,11 @@ button{cursor:pointer;}
 .done-btn.ck{background:var(--green);border-color:var(--green);color:#0d0d0d;}
 .del-btn{background:transparent;border:none;color:#2a2a2a;padding:4px;display:flex;align-items:center;justify-content:center;transition:color 0.15s;width:28px;height:36px;}
 .del-btn:active{color:var(--rose);}
+.excard.skipped{background:#111215;border-color:#252830;border-left-color:var(--muted)!important;}
+.skip-btn{background:transparent;border:1px solid #333;color:var(--muted);padding:7px 10px;font-size:9px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all 0.15s;border-radius:2px;min-width:52px;justify-content:center;margin-left:4px;}
+.skip-btn:active{opacity:0.6;transform:scale(0.94);}
+.skip-btn.active{border-color:#555;color:#888;background:#1a1a1a;}
+.skipped-hint{font-size:9.9px;color:var(--muted);font-style:italic;padding:0 11px 10px;letter-spacing:1px;}
 .empty-hint{font-size:9.9px;color:#2a2a2a;font-style:italic;padding:0 11px 10px;}
 #done-banner{display:none;margin:14px 0;padding:16px;background:#0d1f0d;border:1px solid #1e4020;border-left:3px solid var(--green);text-align:center;}
 #done-banner.show{display:block;}
@@ -217,6 +222,18 @@ button{cursor:pointer;}
 .conf-btn{flex:1;padding:10px;font-size:9.9px;font-weight:700;letter-spacing:1px;border:none;font-family:inherit;cursor:pointer;}
 #conf-ok{background:var(--rose);color:#0d0d0d;}
 #conf-cancel{background:var(--surface);color:var(--soft);}
+
+/* INPUT MODAL */
+#input-modal{display:none;position:fixed;inset:0;background:#000b;z-index:300;align-items:center;justify-content:center;padding:24px;}
+#input-modal.show{display:flex;}
+#input-box{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--blue);padding:24px;width:100%;max-width:320px;}
+#input-box h3{font-size:14.4px;font-weight:900;color:var(--blue);margin-bottom:8px;letter-spacing:1px;}
+#input-box p{font-size:10.8px;color:var(--soft);margin-bottom:12px;line-height:1.5;}
+#input-field{margin-bottom:16px;}
+#input-btns{display:flex;gap:6px;}
+.input-btn{flex:1;padding:10px;font-size:9.9px;font-weight:700;letter-spacing:1px;border:none;font-family:inherit;cursor:pointer;}
+#input-ok{background:var(--blue);color:#fff;}
+#input-cancel{background:var(--surface);color:var(--soft);}
 
 /* OFFLINE */
 #offline-bar{display:none;background:#1a0a00;border-bottom:1px solid #3a1800;padding:6px 16px;font-size:9px;color:var(--blue);letter-spacing:1px;font-weight:700;text-align:center;}
@@ -342,6 +359,21 @@ button{cursor:pointer;}
   </div>
 </div>
 
+<!-- INPUT MODAL -->
+<div id="input-modal">
+  <div id="input-box">
+    <h3 id="input-title">Name</h3>
+    <p id="input-msg"></p>
+    <div id="input-field">
+      <input id="input-value" type="text" placeholder="" autocomplete="off">
+    </div>
+    <div id="input-btns">
+      <button class="input-btn" id="input-cancel" onclick="closeInputModal()">Cancel</button>
+      <button class="input-btn" id="input-ok" onclick="doInputModal()">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── PROGRAM ───────────────────────────────────────────────────────────
 const DEFAULT_P={
@@ -426,7 +458,7 @@ function loadDays(){
       // Validate that parsed days are non-empty array
       if(Array.isArray(parsed)&&parsed.length>0)DAYS=parsed;
     }
-  }catch{}
+  }catch(e){console.error("Failed to load days from storage:",e);}
 }
 function saveDays(){localStorage.setItem(SK_DAYS,JSON.stringify(DAYS));}
 
@@ -484,23 +516,20 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 // ── STORAGE ───────────────────────────────────────────────────────────
 function load(){
   loadDays();
-  try{logs=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");}catch{logs={};}
+  try{logs=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");}catch(e){console.error("Failed to load logs:",e);logs={};}
   try{
     const s=localStorage.getItem(SK_PROG);
     P=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_P));
-  }catch{P=JSON.parse(JSON.stringify(DEFAULT_P));}
+  }catch(e){console.error("Failed to load program:",e);P=JSON.parse(JSON.stringify(DEFAULT_P));}
   try{
     const s=localStorage.getItem(SK_ALT);
     ALT=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_ALT));
-  }catch{ALT=JSON.parse(JSON.stringify(DEFAULT_ALT));}
+  }catch(e){console.error("Failed to load alt program:",e);ALT=JSON.parse(JSON.stringify(DEFAULT_ALT));}
 
   // Ensure all days in DAYS have program entries; add defaults if missing
   DAYS.forEach(dk=>{
     if(!P[dk])P[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
     if(!ALT[dk])ALT[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
-    // Force colors to blue
-    P[dk].color='#4a9eff';
-    ALT[dk].color='#4a9eff';
   });
 
   // FIX 5: Initialize day and histDay to a valid DAYS entry
@@ -535,7 +564,7 @@ function sets(id){return dl()[id]||[];}
 function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
-  d[id].push({reps:"",weight:"",note:"",done:true});
+  d[id].push({reps:"",note:"",done:true});
   // Record session start time on first set
   const t=activeKey(),dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
@@ -552,11 +581,23 @@ function upd(id,i,f,v){
 }
 function delSet(id,i){
   const d=dl();
-  if(d[id]){d[id].splice(i,1);save();renderToday();}
+  if(d[id]){d[id].splice(i,1);if(!d[id].length)delete d[id];save();renderToday();}
 }
-function tog(id,i){
-  const s=dl()[id];
-  if(s&&s[i]!==undefined){s[i].done=!s[i].done;save();renderToday();}
+function skipEx(id){
+  const d=dl();
+  if(d[id]&&d[id].length===1&&d[id][0]._skip){
+    // Already skipped — toggle off
+    delete d[id];
+  }else{
+    d[id]=[{_skip:true,reps:"—",note:"skipped",done:false}];
+    // Record session start time if first action
+    const t=activeKey(),dk=curDayKey();
+    if(!logs[t])logs[t]={};
+    if(!logs[t]._meta)logs[t]._meta={};
+    if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
+    localStorage.removeItem(sessionClosedKey());
+  }
+  save();renderToday();
 }
 
 // ── HISTORY DELETE ────────────────────────────────────────────────────
@@ -619,20 +660,28 @@ function saveExEdit(id){
 function toggleEditExpand(id){expandedEx=expandedEx===id?null:id;renderEdit();}
 
 function addDay(){
-  const name=prompt("Day name (e.g. PUSH, LEGS, CARDIO):");
-  if(!name||!name.trim())return;
-  const id="day_"+uid();
-  const label="DAY "+(DAYS.length+1);
-  const sub=name.trim().toUpperCase();
-  P[id]={label,sub,color:"#4a9eff",exercises:[]};
-  ALT[id]={label,sub,color:"#4a9eff",exercises:[]};
-  DAYS.push(id);
-  saveDays();save();
-  day=id;renderTabs();renderToday();renderEdit();
+  prompt2("Add Day","Enter a name for the new day.","e.g. PUSH, LEGS, CARDIO",name=>{
+    if(!name)return;
+    const id="day_"+uid();
+    const label="DAY "+(DAYS.length+1);
+    const sub=name.toUpperCase();
+    P[id]={label,sub,color:"#4a9eff",exercises:[]};
+    ALT[id]={label,sub,color:"#4a9eff",exercises:[]};
+    DAYS.push(id);
+    saveDays();save();
+    day=id;renderTabs();renderToday();renderEdit();
+  });
 }
 
 function deleteDay(id){
-  if(DAYS.length<=1){alert("Must have at least one day.");return;}
+  if(DAYS.length<=1){
+    document.getElementById("conf-title").textContent="Can't Delete";
+    document.getElementById("conf-msg").textContent="You need at least one day.";
+    confirmCb=null;
+    document.getElementById("conf-ok").style.display="none";
+    document.getElementById("confirm-modal").classList.add("show");
+    return;
+  }
   confirm2("Delete Day","Delete this day and all its exercises? History will be kept.",()=>{
     DAYS=DAYS.filter(d=>d!==id);
     delete P[id];delete ALT[id];
@@ -991,15 +1040,21 @@ function getLastSession(exId){
 }
 function fmtLastSession(sets){
   if(!sets||!sets.length)return null;
-  const logged=sets.filter(s=>s.reps||s.note);
+  const logged=sets.filter(s=>!s._skip&&(s.reps||s.note));
   if(!logged.length)return null;
   return logged.map(s=>[s.reps,s.note].filter(Boolean).join(' ')).filter(Boolean).join(' · ');
 }
 
 // ── PROGRESS ─────────────────────────────────────────────────────────
+function hasRealSets(id){
+  const ss=sets(id);
+  if(!ss.length)return false;
+  if(ss.length===1&&ss[0]._skip)return true; // skipped counts
+  return ss.some(s=>s.reps||s.note);
+}
 function prog(){
   const exs=curP()[day]?curP()[day].exercises:[];
-  const logged=exs.filter(e=>sets(e.id).length>0).length;
+  const logged=exs.filter(e=>hasRealSets(e.id)).length;
   const pct=exs.length?Math.round(logged/exs.length*100):0;
   return{logged,total:exs.length,pct};
 }
@@ -1017,9 +1072,13 @@ function updateUI(){
   document.getElementById("done-banner").classList.toggle("show",pct===100&&total>0);
   (curP()[day]||{exercises:[]}).exercises.forEach(ex=>{
     const card=document.getElementById("c-"+ex.id);if(!card)return;
-    const allDone=sets(ex.id).length>0;
+    const ss=sets(ex.id);
+    const isSkipped=ss.length===1&&ss[0]._skip;
+    const allDone=hasRealSets(ex.id)&&!isSkipped;
     card.classList.toggle("done-all",allDone);
-    if(!allDone)card.style.borderLeftColor=c;
+    card.classList.toggle("skipped",isSkipped);
+    if(!allDone&&!isSkipped)card.style.borderLeftColor=c;
+    else if(isSkipped)card.style.borderLeftColor="var(--muted)";
   });
 }
 
@@ -1048,9 +1107,15 @@ function renderToday(){
   });
   let html="",lastPhase=null;
   d.exercises.forEach(ex=>{
-    const ss=sets(ex.id),allDone=ss.length>0;
+    const ss=sets(ex.id);
+    const isSkipped=ss.length===1&&ss[0]._skip;
+    const allDone=hasRealSets(ex.id)&&!isSkipped;
     if(ex.phase!==lastPhase){html+=`<div class="phase-div">${esc(ex.phase)}</div>`;lastPhase=ex.phase;}
-    html+=`<div class="excard${allDone?" done-all":""}" id="c-${ex.id}" style="border-left-color:${allDone?"var(--green)":c}">
+    let cardClass="excard";
+    if(allDone)cardClass+=" done-all";
+    else if(isSkipped)cardClass+=" skipped";
+    const borderColor=allDone?"var(--green)":isSkipped?"var(--muted)":c;
+    html+=`<div class="${cardClass}" id="c-${ex.id}" style="border-left-color:${borderColor}">
       <div class="exhdr">
         <div style="flex:1;min-width:0">
           <div class="exname${allDone?" dn":""}">${allDone?ICO_CHECK:""}${esc(ex.name)}</div>
@@ -1060,9 +1125,15 @@ function renderToday(){
             return fmt?"LAST: "+esc(fmt):"TARGET: "+esc(ex.target);
           })()}</div>
         </div>
-        <button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>
+        ${isSkipped
+          ? `<button class="skip-btn active" onclick="skipEx('${ex.id}')">↩ UNDO</button>`
+          : `<button class="addset-btn" style="border-color:${c}44;color:${c}" onclick="addSet('${ex.id}')">${ICO_PLUS} SET</button>
+             <button class="skip-btn" onclick="skipEx('${ex.id}')">— SKIP</button>`
+        }
       </div>`;
-    if(ss.length>0){
+    if(isSkipped){
+      html+=`<div class="skipped-hint">SKIPPED</div>`;
+    }else if(ss.length>0){
       html+=`<div class="sets-wrap"><div class="sets-hdr"><div class="sh">REPS / TIME</div><div class="sh">NOTE</div><div></div></div>`;
       ss.forEach((s,i)=>{
         html+=`<div class="set-row">
@@ -1230,15 +1301,35 @@ function setHistDay(d){histDay=d;renderHist();}
 function confirm2(title,msg,cb){
   document.getElementById("conf-title").textContent=title;
   document.getElementById("conf-msg").textContent=msg;
+  document.getElementById("conf-ok").style.display="";
   confirmCb=cb;
   document.getElementById("confirm-modal").classList.add("show");
 }
 function doConfirm(){closeConfirm();if(confirmCb)confirmCb();confirmCb=null;}
 function closeConfirm(){document.getElementById("confirm-modal").classList.remove("show");}
 document.getElementById("confirm-modal").addEventListener("click",e=>{if(e.target===document.getElementById("confirm-modal"))closeConfirm();});
-document.getElementById("break-modal").addEventListener("click",e=>{if(e.target===document.getElementById("break-modal"))closeBreak();});
 
-// ── OFFLINE / SW ──────────────────────────────────────────────────────
+let inputCb=null;
+function prompt2(title,msg,placeholder,cb){
+  document.getElementById("input-title").textContent=title;
+  document.getElementById("input-msg").textContent=msg;
+  const f=document.getElementById("input-value");
+  f.placeholder=placeholder||"";f.value="";
+  inputCb=cb;
+  document.getElementById("input-modal").classList.add("show");
+  setTimeout(()=>f.focus(),50);
+}
+function doInputModal(){
+  const val=document.getElementById("input-value").value.trim();
+  closeInputModal();
+  if(inputCb)inputCb(val);
+  inputCb=null;
+}
+function closeInputModal(){document.getElementById("input-modal").classList.remove("show");}
+document.getElementById("input-modal").addEventListener("click",e=>{if(e.target===document.getElementById("input-modal"))closeInputModal();});
+document.getElementById("input-value").addEventListener("keydown",e=>{if(e.key==="Enter")doInputModal();});
+
+document.getElementById("break-modal").addEventListener("click",e=>{if(e.target===document.getElementById("break-modal"))closeBreak();});
 window.addEventListener("online",()=>document.getElementById("offline-bar").classList.remove("show"));
 window.addEventListener("offline",()=>document.getElementById("offline-bar").classList.add("show"));
 if("serviceWorker"in navigator){
