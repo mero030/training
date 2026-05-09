@@ -369,11 +369,11 @@ const DEFAULT_P={
     {id:"tue_s5", name:"Side-Lying Leg Raises",    target:"3 × 12–15",  phase:"Strength"},
     {id:"tue_s6", name:"Wall Sit — Max Hold",      target:"1 × max",    phase:"Strength"},
   ]},
-  mob:{label:"DAY 3",sub:"UPPER MOB",color:"#4a9eff",exercises:[
+  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
     {id:"mob_1",  name:"Tom Merrick Full Body Flexibility", target:"60 min follow along", phase:"Session"},
     {id:"mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser", phase:"Session"},
   ]},
-  cor:{label:"DAY 4",sub:"LOWER MOB",color:"#4a9eff",exercises:[
+  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
     {id:"cor_p1", name:"Dead Bug",            target:"3 × 8 each side", phase:"Prepare"},
     {id:"cor_p2", name:"Bird Dog",            target:"3 × 8 each side", phase:"Prepare"},
     {id:"cor_s1", name:"Hollow Hold",         target:"3 × 20–30s",      phase:"Strength"},
@@ -382,13 +382,6 @@ const DEFAULT_P={
     {id:"cor_s4", name:"McGill Curl-Up",      target:"3 × 8",           phase:"Strength"},
     {id:"cor_c1", name:"Child's Pose",        target:"2 × 60s",         phase:"Close"},
     {id:"cor_c2", name:"Supine Spinal Twist", target:"90s each side",   phase:"Close"},
-  ]},
-  fri:{label:"DAY 5",sub:"FULL BODY",color:"#4a9eff",exercises:[
-    {id:"fri_wu1",name:"Jump Rope / March",        target:"5 min",       phase:"Warm-Up"},
-    {id:"fri_s1", name:"Burpees",                  target:"3 × 10",      phase:"Strength"},
-    {id:"fri_s2", name:"Push-Up to Down-Dog",      target:"3 × 8",       phase:"Strength"},
-    {id:"fri_s3", name:"Reverse Lunge",            target:"3 × 10 each", phase:"Strength"},
-    {id:"fri_s4", name:"Plank Hold",               target:"3 × 40s",     phase:"Strength"},
   ]},
 };
 
@@ -407,26 +400,20 @@ const DEFAULT_ALT={
     {id:"alt_tue_s2", name:"Single-Leg Glute Bridge",  target:"2 × 8",   phase:"Strength"},
     {id:"alt_tue_s3", name:"Wall Sit — Max Hold",      target:"1 × max", phase:"Strength"},
   ]},
-  mob:{label:"DAY 3",sub:"UPPER MOB",color:"#4a9eff",exercises:[
+  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
     {id:"alt_mob_1",  name:"Tom Merrick Full Body Flexibility", target:"30 min — first half only", phase:"Session"},
     {id:"alt_mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser",     phase:"Session"},
   ]},
-  cor:{label:"DAY 4",sub:"LOWER MOB",color:"#4a9eff",exercises:[
+  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
     {id:"alt_cor_p1", name:"Dead Bug",        target:"2 × 8 each side", phase:"Prepare"},
     {id:"alt_cor_s1", name:"Hollow Hold",     target:"2 × 20s",         phase:"Strength"},
     {id:"alt_cor_s2", name:"Reverse Crunch",  target:"2 × 10",          phase:"Strength"},
     {id:"alt_cor_c1", name:"Child's Pose",    target:"2 × 60s",         phase:"Close"},
   ]},
-  fri:{label:"DAY 5",sub:"FULL BODY",color:"#4a9eff",exercises:[
-    {id:"alt_fri_wu1",name:"Jump Rope / March",   target:"3 min",       phase:"Warm-Up"},
-    {id:"alt_fri_s1", name:"Burpees",             target:"2 × 8",       phase:"Strength"},
-    {id:"alt_fri_s2", name:"Push-Up to Down-Dog", target:"2 × 6",       phase:"Strength"},
-    {id:"alt_fri_s3", name:"Plank Hold",          target:"2 × 30s",     phase:"Strength"},
-  ]},
 };
 
 // FIX 1: DEFAULT_DAYS matches DEFAULT_P keys exactly
-const DEFAULT_DAYS=["mon","tue","mob","cor","fri"];
+const DEFAULT_DAYS=["mon","tue","mob","cor"];
 
 const SK_DAYS="training_days_v2";
 let DAYS=[...DEFAULT_DAYS];
@@ -471,7 +458,13 @@ function yesterdayKey(){
   return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function sessionClosedKey(){return'session_closed_'+curDayKey()+'_'+todayKey();}
-function closeSession(){localStorage.setItem(sessionClosedKey(),'1');}
+// BUG A FIX: always close BOTH main and alt keys regardless of which variant is active,
+// so stopping the stopwatch on ALT doesn't leave MAIN appearing "open" on next load.
+function closeSession(){
+  const today=todayKey();
+  localStorage.setItem('session_closed_'+day+'_'+today,'1');
+  localStorage.setItem('session_closed_'+day+'_alt_'+today,'1');
+}
 function isSessionClosed(){return localStorage.getItem(sessionClosedKey())==='1';}
 
 // FIX 4: activeKey simplified — only use yesterday if stopwatch is actively running and yesterday has data
@@ -757,7 +750,7 @@ function swToggle(){
     // Show "new session" button, hide reset
     document.getElementById("sw-reset").style.display="none";
     document.getElementById("sw-newsession").classList.add("show");
-    localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs}));
+    localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs,date:todayKey()}));
   }else{
     // START
     swStartEpoch=Date.now();swRunning=true;
@@ -788,13 +781,17 @@ function newSession(){
   document.getElementById("sw-toggle").className="sw-btn go";
   document.getElementById("sw-reset").style.display="";
   document.getElementById("sw-newsession").classList.remove("show");
-  // FIX 7: Clear today's logs for current day+variant and remove closed session flag
-  const today=todayKey(),dk=curDayKey();
-  localStorage.removeItem(sessionClosedKey());
+  // BUG C FIX: clear BOTH main and alt logs for the current day,
+  // so switching to ALT and clicking New Session doesn't leave MAIN sets behind.
+  const today=todayKey();
+  const mainDk=day;
+  const altDk=day+'_alt';
+  localStorage.removeItem('session_closed_'+mainDk+'_'+today);
+  localStorage.removeItem('session_closed_'+altDk+'_'+today);
   if(logs[today]){
-    delete logs[today][dk];
-    if(logs[today]._meta)delete logs[today]._meta[dk];
-    // Clean up date if empty
+    delete logs[today][mainDk];
+    delete logs[today][altDk];
+    if(logs[today]._meta){delete logs[today]._meta[mainDk];delete logs[today]._meta[altDk];}
     const remaining=Object.keys(logs[today]).filter(k=>k!=='_meta');
     if(!remaining.length)delete logs[today];
   }
@@ -815,8 +812,8 @@ function swRestore(){
       swSavedMs=s.savedMs||0;
       const tot=Math.floor(swSavedMs/1000),m=Math.floor(tot/60),sc=tot%60;
       document.getElementById("sw-display").textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
-      if(swSavedMs>0){
-        // Was stopped — show new session button
+      if(swSavedMs>0&&s.date===todayKey()){
+        // Was stopped today — show new session button
         document.getElementById("sw-reset").style.display="none";
         document.getElementById("sw-newsession").classList.add("show");
       }
@@ -987,9 +984,9 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&breakRunn
 
 // ── LAST SESSION DATA ─────────────────────────────────────────────────
 function getLastSession(exId){
-  const dk=curDayKey(),today=todayKey();
+  const dk=curDayKey(),activeDate=activeKey();
   const dates=Object.keys(logs)
-    .filter(dt=>dt!==today&&logs[dt][dk]&&Array.isArray(logs[dt][dk][exId])&&logs[dt][dk][exId].length>0)
+    .filter(dt=>dt!==activeDate&&logs[dt][dk]&&Array.isArray(logs[dt][dk][exId])&&logs[dt][dk][exId].length>0)
     .sort((a,b)=>b.localeCompare(a));
   if(!dates.length)return null;
   return logs[dates[0]][dk][exId];
@@ -1098,8 +1095,8 @@ function renderEdit(){
   let html="";
   d.exercises.forEach(ex=>{
     const open=expandedEx===ex.id;
-    // Collect phases from MAIN variant for the select
-    const phases=[...new Set(P[day].exercises.map(e=>e.phase))];
+    // BUG E FIX: use curP() so ALT variant shows its own phases, not MAIN's
+    const phases=[...new Set(curP()[day].exercises.map(e=>e.phase))];
     const phOpts=phases.map(p=>`<option value="${esc(p)}"${p===ex.phase?" selected":""}>${esc(p)}</option>`).join("");
     html+=`<div class="edit-excard" id="ec-${ex.id}" data-id="${ex.id}"
       draggable="true" ondragstart="onDragStart(event,'${ex.id}')" ondragend="onDragEnd()" ondragover="onDragOver(event,'${ex.id}')">
