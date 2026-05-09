@@ -437,10 +437,8 @@ const SK_PROG="training_program_v4";
 // ── STATE ─────────────────────────────────────────────────────────────
 // FIX 2: guessDay() returns a valid key from DAYS, not hardcoded weekday keys
 function guessDay(){
-  const map={1:"mon",2:"tue",4:"mob",5:"fri",6:"cor"};
-  const candidate=map[new Date().getDay()];
-  // Return candidate only if it exists in current DAYS; otherwise first day
-  if(candidate&&DAYS.includes(candidate))return candidate;
+  const last=localStorage.getItem("last_day");
+  if(last&&DAYS.includes(last))return last;
   return DAYS[0];
 }
 
@@ -1213,6 +1211,7 @@ function setMode(m){
 }
 function setDay(d){
   day=d;expandedEx=null;variant="main";
+  localStorage.setItem("last_day",d);
   document.getElementById("vtab-main").className="vtab on";
   document.getElementById("vtab-alt").className="vtab";
   renderToday();
