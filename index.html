@@ -444,7 +444,6 @@ const DEFAULT_ALT={
   ]},
 };
 
-// FIX 1: DEFAULT_DAYS matches DEFAULT_P keys exactly
 const DEFAULT_DAYS=["mon","tue","mob","cor"];
 
 const SK_DAYS="training_days_v2";
@@ -455,7 +454,6 @@ function loadDays(){
     const s=localStorage.getItem(SK_DAYS);
     if(s){
       const parsed=JSON.parse(s);
-      // Validate that parsed days are non-empty array
       if(Array.isArray(parsed)&&parsed.length>0)DAYS=parsed;
     }
   }catch(e){console.error("Failed to load days from storage:",e);}
@@ -467,15 +465,13 @@ const SK_LOGS="training_logs_v2";
 const SK_PROG="training_program_v4";
 
 // ── STATE ─────────────────────────────────────────────────────────────
-// FIX 2: guessDay() returns a valid key from DAYS, not hardcoded weekday keys
 function guessDay(){
   const last=localStorage.getItem("last_day");
   if(last&&DAYS.includes(last))return last;
   return DAYS[0];
 }
 
-let day=null; // set after load()
-// FIX 3: histDay defaults to DAYS[0] after load
+let day=null;
 let histDay=null;
 let mode="today",variant="main";
 let logs={},P={},ALT={};
@@ -488,8 +484,6 @@ function yesterdayKey(){
   return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function sessionClosedKey(){return'session_closed_'+curDayKey()+'_'+todayKey();}
-// BUG A FIX: always close BOTH main and alt keys regardless of which variant is active,
-// so stopping the stopwatch on ALT doesn't leave MAIN appearing "open" on next load.
 function closeSession(){
   const today=todayKey();
   localStorage.setItem('session_closed_'+day+'_'+today,'1');
@@ -497,7 +491,6 @@ function closeSession(){
 }
 function isSessionClosed(){return localStorage.getItem(sessionClosedKey())==='1';}
 
-// FIX 4: activeKey simplified — only use yesterday if stopwatch is actively running and yesterday has data
 function activeKey(){
   const dk=curDayKey(),today=todayKey();
   if(isSessionClosed())return today;
@@ -526,13 +519,11 @@ function load(){
     ALT=s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_ALT));
   }catch(e){console.error("Failed to load alt program:",e);ALT=JSON.parse(JSON.stringify(DEFAULT_ALT));}
 
-  // Ensure all days in DAYS have program entries; add defaults if missing
   DAYS.forEach(dk=>{
     if(!P[dk])P[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
     if(!ALT[dk])ALT[dk]={label:dk.toUpperCase(),sub:dk.toUpperCase(),color:"#4a9eff",exercises:[]};
   });
 
-  // FIX 5: Initialize day and histDay to a valid DAYS entry
   day=guessDay();
   histDay=DAYS[0];
 }
@@ -565,13 +556,10 @@ function addSet(id){
   const d=dl();
   if(!d[id])d[id]=[];
   d[id].push({reps:"",note:"",done:true});
-  // Record session start time on first set
   const t=activeKey(),dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
   if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
-  // Clear any session-closed flag so new data is tracked
   localStorage.removeItem(sessionClosedKey());
-  // Auto-start stopwatch on first set if not running and at zero
   if(!swRunning&&swSavedMs===0)swToggle();
   save();renderToday();
 }
@@ -586,11 +574,9 @@ function delSet(id,i){
 function skipEx(id){
   const d=dl();
   if(d[id]&&d[id].length===1&&d[id][0]._skip){
-    // Already skipped — toggle off
     delete d[id];
   }else{
     d[id]=[{_skip:true,reps:"—",note:"skipped",done:false}];
-    // Record session start time if first action
     const t=activeKey(),dk=curDayKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
@@ -606,9 +592,7 @@ function delSession(date,dk){
     if(logs[date]){
       delete logs[date][dk];
       delete logs[date][dk+'_alt'];
-      // Clean up _meta for this day
       if(logs[date]._meta){delete logs[date]._meta[dk];delete logs[date]._meta[dk+'_alt'];}
-      // Remove date entirely if nothing left
       const remaining=Object.keys(logs[date]).filter(k=>k!=='_meta');
       if(!remaining.length)delete logs[date];
     }
@@ -693,7 +677,6 @@ function deleteDay(id){
 }
 
 function renderTabs(){
-  // Day tabs
   const tabsEl=document.getElementById("day-tabs");
   tabsEl.innerHTML=DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
@@ -704,7 +687,6 @@ function renderTabs(){
       ${esc(label)}
     </button>`;
   }).join('');
-  // History tabs
   const htabsEl=document.getElementById("hist-day-tabs");
   htabsEl.innerHTML=DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
@@ -735,7 +717,6 @@ function reorder(fromId,toId){
   save();renderEdit();
 }
 
-// FIX 6: Guard dragLastTarget to prevent duplicate reorder calls during ondragover
 function onDragStart(e,id){
   dragSrc=id;dragLastTarget=id;
   e.dataTransfer.effectAllowed="move";
@@ -748,7 +729,6 @@ function onDragEnd(){
 function onDragOver(e,id){
   e.preventDefault();
   if(!dragSrc||dragSrc===id)return;
-  // FIX: only reorder when target actually changes, not on every mousemove event
   if(id===dragLastTarget)return;
   dragLastTarget=id;
   reorder(dragSrc,id);
@@ -770,7 +750,7 @@ function onTouchEnd(){
   touchDragId=null;touchLastTarget=null;
 }
 
-// ── STOPWATCH — clock-based, survives backgrounding ───────────────────
+// ── STOPWATCH ─────────────────────────────────────────────────────────
 let swRunning=false,swStartEpoch=0,swSavedMs=0,swRaf=null;
 function swGetElapsed(){return swRunning?swSavedMs+(Date.now()-swStartEpoch):swSavedMs;}
 function swTick(){
@@ -782,11 +762,9 @@ function swTick(){
 }
 function swToggle(){
   if(swRunning){
-    // STOP
     swSavedMs=swGetElapsed();swRunning=false;cancelAnimationFrame(swRaf);
     document.getElementById("sw-toggle").textContent="START";
     document.getElementById("sw-toggle").className="sw-btn go";
-    // Save duration to log meta
     const t=activeKey(),dk=curDayKey();
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
@@ -794,16 +772,13 @@ function swToggle(){
     logs[t]._meta[dk].durationMs=swSavedMs;
     closeSession();
     save();
-    // Show "new session" button, hide reset
     document.getElementById("sw-reset").style.display="none";
     document.getElementById("sw-newsession").classList.add("show");
     localStorage.setItem("sw_state",JSON.stringify({running:false,savedMs:swSavedMs,date:todayKey()}));
   }else{
-    // START
     swStartEpoch=Date.now();swRunning=true;
     document.getElementById("sw-toggle").textContent="STOP";
     document.getElementById("sw-toggle").className="sw-btn stop";
-    // Hide new session button, show reset
     document.getElementById("sw-reset").style.display="";
     document.getElementById("sw-newsession").classList.remove("show");
     localStorage.setItem("sw_state",JSON.stringify({running:true,startEpoch:swStartEpoch,savedMs:swSavedMs}));
@@ -819,30 +794,70 @@ function swReset(){
   document.getElementById("sw-newsession").classList.remove("show");
   localStorage.removeItem("sw_state");
 }
+
+// ── NEW SESSION (fixed: archives before clearing) ─────────────────────
 function newSession(){
-  // Reset stopwatch fully
-  swRunning=false;cancelAnimationFrame(swRaf);swSavedMs=0;swStartEpoch=0;
+  // 1. Stop stopwatch if still running and save duration
+  if(swRunning){
+    swSavedMs=swGetElapsed();
+    swRunning=false;
+    cancelAnimationFrame(swRaf);
+    const t=activeKey(),dk=curDayKey();
+    if(!logs[t])logs[t]={};
+    if(!logs[t]._meta)logs[t]._meta={};
+    if(!logs[t]._meta[dk])logs[t]._meta[dk]={};
+    logs[t]._meta[dk].durationMs=swSavedMs;
+    closeSession();
+  }
+
+  // 2. Archive current session under a unique key before clearing
+  const today=todayKey();
+  const mainDk=day;
+  const altDk=day+'_alt';
+  const hasMain=logs[today]&&hasData(logs[today][mainDk]);
+  const hasAlt=logs[today]&&hasData(logs[today][altDk]);
+
+  if(hasMain||hasAlt){
+    // Find a free archive key: today_s2, today_s3, ...
+    let n=2,archiveKey;
+    do{archiveKey=today+'_s'+n++;}while(logs[archiveKey]);
+
+    logs[archiveKey]={};
+    if(hasMain)logs[archiveKey][mainDk]=JSON.parse(JSON.stringify(logs[today][mainDk]));
+    if(hasAlt) logs[archiveKey][altDk] =JSON.parse(JSON.stringify(logs[today][altDk]));
+    // Copy meta too
+    if(logs[today]&&logs[today]._meta){
+      logs[archiveKey]._meta={};
+      if(logs[today]._meta[mainDk])logs[archiveKey]._meta[mainDk]=JSON.parse(JSON.stringify(logs[today]._meta[mainDk]));
+      if(logs[today]._meta[altDk]) logs[archiveKey]._meta[altDk] =JSON.parse(JSON.stringify(logs[today]._meta[altDk]));
+    }
+  }
+
+  // 3. Clear today's active session
+  localStorage.removeItem('session_closed_'+mainDk+'_'+today);
+  localStorage.removeItem('session_closed_'+altDk+'_'+today);
+  if(logs[today]){
+    delete logs[today][mainDk];
+    delete logs[today][altDk];
+    if(logs[today]._meta){
+      delete logs[today]._meta[mainDk];
+      delete logs[today]._meta[altDk];
+    }
+    const remaining=Object.keys(logs[today]).filter(k=>k!=='_meta');
+    if(!remaining.length)delete logs[today];
+  }
+
+  // 4. Reset stopwatch UI
+  swSavedMs=0;swStartEpoch=0;
   localStorage.removeItem("sw_state");
   document.getElementById("sw-display").textContent="00:00";
   document.getElementById("sw-toggle").textContent="START";
   document.getElementById("sw-toggle").className="sw-btn go";
   document.getElementById("sw-reset").style.display="";
   document.getElementById("sw-newsession").classList.remove("show");
-  // BUG C FIX: clear BOTH main and alt logs for the current day,
-  // so switching to ALT and clicking New Session doesn't leave MAIN sets behind.
-  const today=todayKey();
-  const mainDk=day;
-  const altDk=day+'_alt';
-  localStorage.removeItem('session_closed_'+mainDk+'_'+today);
-  localStorage.removeItem('session_closed_'+altDk+'_'+today);
-  if(logs[today]){
-    delete logs[today][mainDk];
-    delete logs[today][altDk];
-    if(logs[today]._meta){delete logs[today]._meta[mainDk];delete logs[today]._meta[altDk];}
-    const remaining=Object.keys(logs[today]).filter(k=>k!=='_meta');
-    if(!remaining.length)delete logs[today];
-  }
-  save();renderToday();
+
+  save();
+  renderToday();
 }
 
 function swRestore(){
@@ -860,7 +875,6 @@ function swRestore(){
       const tot=Math.floor(swSavedMs/1000),m=Math.floor(tot/60),sc=tot%60;
       document.getElementById("sw-display").textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
       if(swSavedMs>0&&s.date===todayKey()){
-        // Was stopped today — show new session button
         document.getElementById("sw-reset").style.display="none";
         document.getElementById("sw-newsession").classList.add("show");
       }
@@ -869,7 +883,7 @@ function swRestore(){
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&swRunning){cancelAnimationFrame(swRaf);swTick();}});
 
-// ── REST TIMER — clock-based, survives backgrounding ─────────────────
+// ── REST TIMER ────────────────────────────────────────────────────────
 let breakTotal=90,breakEndEpoch=0,breakRunning=false,breakRaf=null,breakPausedRemaining=90;
 let wakeLock=null;
 async function requestWakeLock(){
@@ -905,7 +919,6 @@ function applyCustomBreak(){
   document.querySelectorAll(".bpreset").forEach(b=>b.classList.remove("on"));
   updateBreakDisplay();
 }
-// ── AUDIO BEEP ───────────────────────────────────────────────────────
 function playBeep(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
@@ -921,8 +934,6 @@ function playBeep(){
     });
   }catch(e){console.warn("Audio:",e);}
 }
-
-// ── NOTIFICATIONS ─────────────────────────────────────────────────────
 async function requestNotifPermission(){
   if(!('Notification' in window))return false;
   if(Notification.permission==='granted')return true;
@@ -935,7 +946,6 @@ function swMsg(data){
 }
 function scheduleRestNotif(endEpoch){swMsg({type:'scheduleRest',endEpoch});}
 function cancelRestNotif(){swMsg({type:'cancelRest'});}
-
 function breakTick(){
   if(!breakRunning)return;
   const rem=breakGetRemaining();
@@ -957,7 +967,6 @@ function breakTick(){
 function breakToggle(){
   const rem=breakGetRemaining();
   if(rem<=0){
-    // Reset
     breakPausedRemaining=breakTotal;breakRunning=false;cancelAnimationFrame(breakRaf);
     cancelRestNotif();releaseWakeLock();
     document.getElementById("bctrl-start").textContent="START";
@@ -967,7 +976,6 @@ function breakToggle(){
     return;
   }
   if(breakRunning){
-    // Pause
     breakPausedRemaining=breakGetRemaining();breakRunning=false;cancelAnimationFrame(breakRaf);
     cancelRestNotif();releaseWakeLock();
     document.getElementById("bctrl-start").textContent="RESUME";
@@ -975,7 +983,6 @@ function breakToggle(){
     document.getElementById("break-fab").classList.remove("running");
     localStorage.setItem("break_state",JSON.stringify({running:false,total:breakTotal,remaining:breakPausedRemaining}));
   }else{
-    // Start / Resume
     breakEndEpoch=Date.now()+breakPausedRemaining*1000;breakRunning=true;
     document.getElementById("bctrl-start").textContent="PAUSE";
     document.getElementById("bctrl-start").className="bctrl running";
@@ -1049,7 +1056,7 @@ function fmtLastSession(sets){
 function hasRealSets(id){
   const ss=sets(id);
   if(!ss.length)return false;
-  if(ss.length===1&&ss[0]._skip)return true; // skipped counts
+  if(ss.length===1&&ss[0]._skip)return true;
   return ss.some(s=>s.reps||s.note);
 }
 function prog(){
@@ -1096,7 +1103,6 @@ function renderToday(){
   document.documentElement.style.setProperty("--acc",c);
   document.getElementById("hdr-title").innerHTML=`<span style="color:${c}">${esc(d.sub)}</span>`;
   document.getElementById("hdr-date").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
-  // Update day tab styles
   DAYS.forEach(dk=>{
     const t=document.getElementById("tab-"+dk);if(!t)return;
     const on=dk===day,col=P[dk]?P[dk].color:"#4a9eff";
@@ -1164,7 +1170,6 @@ function renderEdit(){
   let html="";
   d.exercises.forEach(ex=>{
     const open=expandedEx===ex.id;
-    // BUG E FIX: use curP() so ALT variant shows its own phases, not MAIN's
     const phases=[...new Set(curP()[day].exercises.map(e=>e.phase))];
     const phOpts=phases.map(p=>`<option value="${esc(p)}"${p===ex.phase?" selected":""}>${esc(p)}</option>`).join("");
     html+=`<div class="edit-excard" id="ec-${ex.id}" data-id="${ex.id}"
@@ -1202,7 +1207,6 @@ function renderEdit(){
 // ── RENDER HISTORY ────────────────────────────────────────────────────
 function renderHist(){
   const c=P[histDay]?P[histDay].color:"#4a9eff";
-  // Update tab styles
   DAYS.forEach(dk=>{
     const b=document.getElementById("htab-"+dk);if(!b)return;
     const on=dk===histDay,col=P[dk]?P[dk].color:"#4a9eff";
@@ -1210,16 +1214,26 @@ function renderHist(){
     b.style.color=on?col:"";
     b.style.borderColor=on?col+"55":"";
   });
+
+  // Match both exact day keys and archived keys (today_s2, today_s3, ...)
   const hist=Object.entries(logs)
     .filter(([dt,data])=>{
       const m=data[histDay],a=data[histDay+"_alt"];
       return hasData(m)||hasData(a);
     })
-    .sort(([a],[b])=>b.localeCompare(a)).slice(0,20);
+    .map(([dt,data])=>{
+      // Normalise archive keys like 2025-05-12_s2 → display as the base date
+      const baseDate=dt.replace(/_s\d+$/,'');
+      return[dt,data,baseDate];
+    })
+    .sort(([a],[b])=>b.localeCompare(a))
+    .slice(0,30);
+
   const el=document.getElementById("hist-content");
   if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
+
   let html="";
-  hist.forEach(([dt,data])=>{
+  hist.forEach(([dt,data,baseDate])=>{
     const renderVariant=(vk,vlabel)=>{
       const sd=data[vk]||{};
       const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id])&&sd[id].length>0);
@@ -1250,8 +1264,12 @@ function renderHist(){
     const mainContent=renderVariant(histDay,"MAIN");
     const altContent=renderVariant(histDay+"_alt","ALT");
     if(!mainContent&&!altContent)return;
-    const d=new Date(dt+"T12:00:00");
-    const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+
+    const sessionNum=dt.match(/_s(\d+)$/);
+    const d=new Date((baseDate||dt)+"T12:00:00");
+    const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})
+      +(sessionNum?`  ·  Session ${sessionNum[1]}`:'');
+
     html+=`<div class="hsession" style="border-left-color:${c}">
       <div class="hshdr">
         <div class="hsdate" style="color:${c}">${lbl}</div>
@@ -1337,8 +1355,8 @@ if("serviceWorker"in navigator){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────
-load();       // sets DAYS, P, ALT, day, histDay
-renderTabs(); // builds tab DOM from DAYS
+load();
+renderTabs();
 renderToday();
 swRestore();
 breakRestore();
