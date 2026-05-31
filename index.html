@@ -569,7 +569,7 @@ function load(){
   });
 
   day=guessDay();
-  histDay=DAYS[0];
+  histDay="all";
 }
 
 let saveT;
@@ -742,7 +742,10 @@ function renderTabs(){
     </button>`;
   }).join('');
   const htabsEl=document.getElementById("hist-day-tabs");
-  htabsEl.innerHTML=DAYS.map(dk=>{
+  const allOn=histDay==="all";
+  htabsEl.innerHTML=`<button class="hdt${allOn?" on":""}" onclick="setHistDay('all')" id="htab-all"
+    style="color:${allOn?"#4a9eff":""};border-color:${allOn?"#4a9eff55":""}">ALL</button>`
+  +DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
     const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===histDay;
@@ -1309,8 +1312,28 @@ function renderEdit(){
 }
 
 // ── RENDER HISTORY ────────────────────────────────────────────────────
+// Build a flat name lookup across ALL programs (current + any id seen in logs)
+function resolveExName(exId, dayKey){
+  // Search current P and ALT first
+  for(const src of [P,ALT]){
+    for(const dk of Object.keys(src)){
+      const f=(src[dk].exercises||[]).find(e=>e.id===exId);
+      if(f)return f.name;
+    }
+  }
+  // Fall back to the raw id, stripping prefixes to make it readable
+  return exId.replace(/^[a-z0-9]+_/,'').replace(/_/g,' ');
+}
+
 function renderHist(){
-  const c=P[histDay]?P[histDay].color:"#4a9eff";
+  // Update day filter tabs
+  const allTabEl=document.getElementById("htab-all");
+  if(allTabEl){
+    const allOn=histDay==="all";
+    allTabEl.className="hdt"+(allOn?" on":"");
+    allTabEl.style.color=allOn?"#4a9eff":"";
+    allTabEl.style.borderColor=allOn?"#4a9eff55":"";
+  }
   DAYS.forEach(dk=>{
     const b=document.getElementById("htab-"+dk);if(!b)return;
     const on=dk===histDay,col=P[dk]?P[dk].color:"#4a9eff";
@@ -1319,28 +1342,50 @@ function renderHist(){
     b.style.borderColor=on?col+"55":"";
   });
 
-  const hist=Object.entries(logs)
-    .filter(([dt,data])=>{
-      const m=data[histDay],a=data[histDay+"_alt"];
-      return hasData(m)||hasData(a);
-    })
-    .map(([dt,data])=>{
-      const baseDate=dt.replace(/_s\d+$/,'');
-      return[dt,data,baseDate];
-    })
-    .sort(([a],[b])=>b.localeCompare(a))
-    .slice(0,30);
+  // Gather ALL date entries from logs, sorted newest first
+  const allEntries=Object.entries(logs)
+    .map(([dt,data])=>({dt,data,baseDate:dt.replace(/_s\d+$/,'')}))
+    .sort((a,b)=>b.dt.localeCompare(a.dt))
+    .slice(0,60);
 
   const el=document.getElementById("hist-content");
-  if(!hist.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
+  if(!allEntries.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
 
   let html="";
-  hist.forEach(([dt,data,baseDate])=>{
-    const renderVariant=(vk,vlabel)=>{
+  allEntries.forEach(({dt,data,baseDate})=>{
+    // Collect all day-keys in this date entry (excluding _meta)
+    const dayKeys=Object.keys(data).filter(k=>k!=='_meta'&&typeof data[k]==='object'&&!Array.isArray(data[k]));
+
+    // If filtering by histDay, only show entries that have that key
+    const keysToShow=histDay==="all"
+      ? dayKeys
+      : dayKeys.filter(k=>k===histDay||k===histDay+"_alt");
+
+    if(!keysToShow.length)return;
+
+    // Check there's actually data in at least one key
+    const hasAny=keysToShow.some(k=>hasData(data[k]));
+    if(!hasAny)return;
+
+    const sessionNum=dt.match(/_s(\d+)$/);
+    const d=new Date((baseDate||dt)+"T12:00:00");
+    const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})
+      +(sessionNum?`  ·  Session ${sessionNum[1]}`:'');
+
+    let sessionHtml="";
+    keysToShow.forEach(vk=>{
       const sd=data[vk]||{};
       const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id])&&sd[id].length>0);
-      if(!allIds.length)return"";
-      const exSrc=vk.endsWith("_alt")?ALT:P;
+      if(!allIds.length)return;
+
+      const isAlt=vk.endsWith("_alt");
+      const dayLabel=(()=>{
+        const baseKey=isAlt?vk.slice(0,-4):vk;
+        const prog=isAlt?ALT:P;
+        const sub=prog[baseKey]?prog[baseKey].sub:baseKey.toUpperCase();
+        return sub+(isAlt?" (ALT)":"");
+      })();
+      const labelColor=isAlt?"#b69ef5":"#4a9eff";
       const meta=(data._meta&&data._meta[vk])||{};
       let durStr="";
       if(meta.durationMs){
@@ -1348,39 +1393,30 @@ function renderHist(){
         const h=Math.floor(tot/3600),m=Math.floor((tot%3600)/60),s=tot%60;
         durStr=h>0?h+"h "+m+"m":m>0?m+"m "+String(s).padStart(2,"0")+"s":s>0?s+"s":"";
       }
-      let h=`<div style="font-size:8.1px;letter-spacing:2px;color:${vlabel==="ALT"?"#b69ef5":c};padding:6px 14px 4px;font-weight:700;">${vlabel}${durStr?" · "+durStr:""}</div>`;
+
+      sessionHtml+=`<div style="font-size:8.1px;letter-spacing:2px;color:${labelColor};padding:6px 14px 4px;font-weight:700;">${esc(dayLabel)}${durStr?" · "+durStr:""}</div>`;
       allIds.forEach(id=>{
-        const dayExs=(exSrc[histDay]||{exercises:[]}).exercises;
-        const f=dayExs.find(e=>e.id===id);
-        const name=f?f.name:id;
+        const name=resolveExName(id,vk);
         const ss=sd[id]||[];
-        h+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
+        sessionHtml+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
           const pts=[s.reps||"—",s.note].filter(Boolean).join(" · ");
-          h+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${vk}','${id}',${si})">✕</button></div>`;
+          sessionHtml+=`<div class="hpill${s.done?" dk":""}">${s.done?"✓ ":""}${esc(pts)}<button class="hdel-set" onclick="delHistSet('${dt}','${vk}','${id}',${si})">✕</button></div>`;
         });
-        h+=`</div></div>`;
+        sessionHtml+=`</div></div>`;
       });
-      return h;
-    };
-    const mainContent=renderVariant(histDay,"MAIN");
-    const altContent=renderVariant(histDay+"_alt","ALT");
-    if(!mainContent&&!altContent)return;
+    });
 
-    const sessionNum=dt.match(/_s(\d+)$/);
-    const d=new Date((baseDate||dt)+"T12:00:00");
-    const lbl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})
-      +(sessionNum?`  ·  Session ${sessionNum[1]}`:'');
-
-    html+=`<div class="hsession" style="border-left-color:${c}">
+    if(!sessionHtml)return;
+    html+=`<div class="hsession" style="border-left-color:#4a9eff">
       <div class="hshdr">
-        <div class="hsdate" style="color:${c}">${lbl}</div>
+        <div class="hsdate" style="color:#4a9eff">${lbl}</div>
         <button class="hdel-session" onclick="delSession('${dt}','${histDay}')">${ICO_TRASH}</button>
       </div>
-      ${mainContent}${altContent}
+      ${sessionHtml}
     </div>`;
   });
-  el.innerHTML=html||`<div class="no-hist">No sessions logged yet.</div>`;
+  el.innerHTML=html||`<div class="no-hist">No sessions logged yet for this filter.</div>`;
 }
 
 // ── VIEW SWITCHING ────────────────────────────────────────────────────
