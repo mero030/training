@@ -288,13 +288,18 @@ button{cursor:pointer;}
       <div id="done-banner"><h2>SESSION COMPLETE ✓</h2><p>All exercises logged. Rest well.</p></div>
     </div>
     <div id="hist-view">
-      <div style="display:flex;gap:6px;margin-bottom:14px;">
-        <button onclick="exportHistory()" style="flex:1;padding:10px;background:transparent;border:1px solid #4a9eff55;color:var(--blue);font-size:9px;font-weight:700;letter-spacing:1.5px;font-family:inherit;">↑ EXPORT JSON</button>
-        <label style="flex:1;padding:10px;background:transparent;border:1px dashed #444;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1.5px;text-align:center;cursor:pointer;">↓ IMPORT JSON<input type="file" accept=".json" onchange="importHistory(event)" style="display:none;"></label>
-      </div>
+      <div style="margin-bottom:14px;"><button onclick="exportHistoryText()" style="width:100%;padding:10px;background:transparent;border:1px solid #4a9eff55;color:var(--blue);font-size:9px;font-weight:700;letter-spacing:1.5px;font-family:inherit;">↑ EXPORT HISTORY AS TEXT</button></div>
       <div id="hist-day-tabs"></div>
       <div id="hist-content"></div>
     </div>
+
+
+
+
+
+
+
+
     <div id="edit-view">
       <div class="edit-banner">✏️ <b>Edit Mode</b> — Rename exercises, change targets, add, delete, or drag <b>≡</b> to reorder.</div>
       <div class="day-mgmt">
@@ -569,7 +574,7 @@ function load(){
   });
 
   day=guessDay();
-  histDay="all";
+  histDay=DAYS[0];
 }
 
 let saveT;
@@ -603,6 +608,10 @@ function addSet(id){
   const t=activeKey(),dk=curDayKey();
   if(!logs[t]._meta)logs[t]._meta={};
   if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
+  // Snapshot current exercise names so history is readable even after edits
+  if(!logs[t]._meta[dk].names)logs[t]._meta[dk].names={};
+  const exs=curP()[day]?curP()[day].exercises:[];
+  exs.forEach(ex=>{logs[t]._meta[dk].names[ex.id]=ex.name;});
   localStorage.removeItem(sessionClosedKey());
   if(!swRunning&&swSavedMs===0)swToggle();
   save();renderToday();
@@ -625,6 +634,9 @@ function skipEx(id){
     if(!logs[t])logs[t]={};
     if(!logs[t]._meta)logs[t]._meta={};
     if(!logs[t]._meta[dk])logs[t]._meta[dk]={start:Date.now(),variant};
+    if(!logs[t]._meta[dk].names)logs[t]._meta[dk].names={};
+    const exs=curP()[day]?curP()[day].exercises:[];
+    exs.forEach(ex=>{logs[t]._meta[dk].names[ex.id]=ex.name;});
     localStorage.removeItem(sessionClosedKey());
   }
   save();renderToday();
@@ -684,6 +696,17 @@ function saveExEdit(id){
     if(val)ex.phase=val;
   }
   expandedEx=null;save();renderEdit();renderToday();
+  refreshMetaNames();
+}
+
+// Keep today's meta name snapshot in sync whenever exercises are renamed
+function refreshMetaNames(){
+  const t=activeKey(),dk=curDayKey();
+  if(!logs[t]||!logs[t]._meta||!logs[t]._meta[dk])return;
+  if(!logs[t]._meta[dk].names)logs[t]._meta[dk].names={};
+  const exs=curP()[day]?curP()[day].exercises:[];
+  exs.forEach(ex=>{logs[t]._meta[dk].names[ex.id]=ex.name;});
+  save();
 }
 function toggleEditExpand(id){expandedEx=expandedEx===id?null:id;renderEdit();}
 
@@ -742,10 +765,7 @@ function renderTabs(){
     </button>`;
   }).join('');
   const htabsEl=document.getElementById("hist-day-tabs");
-  const allOn=histDay==="all";
-  htabsEl.innerHTML=`<button class="hdt${allOn?" on":""}" onclick="setHistDay('all')" id="htab-all"
-    style="color:${allOn?"#4a9eff":""};border-color:${allOn?"#4a9eff55":""}">ALL</button>`
-  +DAYS.map(dk=>{
+  htabsEl.innerHTML=DAYS.map(dk=>{
     const label=P[dk]?P[dk].sub:dk;
     const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===histDay;
@@ -1312,74 +1332,28 @@ function renderEdit(){
 }
 
 // ── RENDER HISTORY ────────────────────────────────────────────────────
-// Legacy exercise name lookup (old program IDs → readable names)
-const LEGACY_NAMES={
-  // Upper (mon)
-  "mon_wu1":"External Rotation","mon_wu2":"Active Hang","mon_wu3":"Scapular Pull-Ups",
-  "mon_wu4":"Serratus Push-Ups","mon_wu5":"Wrist Circles + Rocks",
-  "mon_s1":"Slow Push-Ups","mon_s2":"TRX / Body Rows","mon_s3":"Pike Hold Progression",
-  "mon_s4":"Side Plank","mon_s5":"Prone Y Raises","mon_s6":"Dead Hang — Max Hold",
-  // Lower (tue)
-  "tue_wu1":"Tibialis Raises","tue_wu2":"Slow Calf Raises","tue_wu3":"Assisted Deep Squat",
-  "tue_s1":"Tempo Squats","tue_s2":"Single-Leg Glute Bridge","tue_s3":"Heel Slides",
-  "tue_s4":"Step-Downs","tue_s5":"Side-Lying Leg Raises","tue_s6":"Wall Sit — Max Hold",
-  // Mobility (mob)
-  "mob_1":"Tom Merrick Full Body Flexibility","mob_2":"youtu.be/aUm3qE2dvB8",
-  // Core (cor)
-  "cor_p1":"Dead Bug","cor_p2":"Bird Dog",
-  "cor_s1":"Hollow Hold","cor_s2":"Reverse Crunch","cor_s3":"Back Extensions",
-  "cor_s4":"McGill Curl-Up",
-  "cor_c1":"Child's Pose","cor_c2":"Supine Spinal Twist",
-  // Alt Upper (mon_alt)
-  "alt_mon_wu1":"Active Hang","alt_mon_wu2":"Wrist Circles + Rocks",
-  "alt_mon_s1":"Slow Push-Ups","alt_mon_s2":"TRX / Body Rows","alt_mon_s3":"Dead Hang — Max Hold",
-  // Alt Lower (tue_alt)
-  "alt_tue_wu1":"Tibialis Raises","alt_tue_wu2":"Assisted Deep Squat",
-  "alt_tue_s1":"Tempo Squats","alt_tue_s2":"Single-Leg Glute Bridge","alt_tue_s3":"Wall Sit — Max Hold",
-  // Alt Mobility (mob_alt)
-  "alt_mob_1":"Tom Merrick Full Body Flexibility","alt_mob_2":"youtu.be/aUm3qE2dvB8",
-  // Alt Core (cor_alt)
-  "alt_cor_p1":"Dead Bug","alt_cor_s1":"Hollow Hold","alt_cor_s2":"Reverse Crunch","alt_cor_c1":"Child's Pose",
-};
-
-// Legacy day key → readable label
-const LEGACY_DAY_LABELS={
-  "mon":"Upper","tue":"Lower","mob":"Mobility","cor":"Core",
-  "mon_alt":"Upper (Alt)","tue_alt":"Lower (Alt)","mob_alt":"Mobility (Alt)","cor_alt":"Core (Alt)",
-};
-
 function resolveExName(exId){
-  // Check legacy table first
-  if(LEGACY_NAMES[exId])return LEGACY_NAMES[exId];
-  // Search current P and ALT
+  // Search current live P and ALT (picks up any edits made in Edit mode)
   for(const src of [P,ALT]){
     for(const dk of Object.keys(src)){
       const f=(src[dk].exercises||[]).find(e=>e.id===exId);
       if(f)return f.name;
     }
   }
-  // Last resort: clean up the raw id
+  // Fall back to name snapshot stored in log at session time
   return exId.replace(/_/g,' ');
 }
 
 function resolveDayLabel(vk){
-  if(LEGACY_DAY_LABELS[vk])return LEGACY_DAY_LABELS[vk];
   const isAlt=vk.endsWith("_alt");
   const baseKey=isAlt?vk.slice(0,-4):vk;
   const prog=isAlt?ALT:P;
-  const sub=prog[baseKey]?prog[baseKey].sub:baseKey.toUpperCase();
+  const sub=prog[baseKey]?prog[baseKey].sub:baseKey.replace(/_/g,' ').toUpperCase();
   return sub+(isAlt?" (Alt)":"");
 }
 
 function renderHist(){
   // Update day filter tabs
-  const allTabEl=document.getElementById("htab-all");
-  if(allTabEl){
-    const allOn=histDay==="all";
-    allTabEl.className="hdt"+(allOn?" on":"");
-    allTabEl.style.color=allOn?"#4a9eff":"";
-    allTabEl.style.borderColor=allOn?"#4a9eff55":"";
-  }
   DAYS.forEach(dk=>{
     const b=document.getElementById("htab-"+dk);if(!b)return;
     const on=dk===histDay,col=P[dk]?P[dk].color:"#4a9eff";
@@ -1388,30 +1362,23 @@ function renderHist(){
     b.style.borderColor=on?col+"55":"";
   });
 
-  // Gather ALL date entries from logs, sorted newest first
-  const allEntries=Object.entries(logs)
+  // Gather all date entries that contain the selected histDay key
+  const entries=Object.entries(logs)
     .map(([dt,data])=>({dt,data,baseDate:dt.replace(/_s\d+$/,'')}))
+    .filter(({data})=>{
+      const dayKeys=Object.keys(data).filter(k=>k!=='_meta');
+      return dayKeys.some(k=>(k===histDay||k===histDay+"_alt")&&hasData(data[k]));
+    })
     .sort((a,b)=>b.dt.localeCompare(a.dt))
     .slice(0,60);
 
   const el=document.getElementById("hist-content");
-  if(!allEntries.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
+  if(!entries.length){el.innerHTML=`<div class="no-hist">No sessions logged yet.</div>`;return;}
 
   let html="";
-  allEntries.forEach(({dt,data,baseDate})=>{
-    // Collect all day-keys in this date entry (excluding _meta)
-    const dayKeys=Object.keys(data).filter(k=>k!=='_meta'&&typeof data[k]==='object'&&!Array.isArray(data[k]));
-
-    // If filtering by histDay, only show entries that have that key
-    const keysToShow=histDay==="all"
-      ? dayKeys
-      : dayKeys.filter(k=>k===histDay||k===histDay+"_alt");
-
+  entries.forEach(({dt,data,baseDate})=>{
+    const keysToShow=[histDay, histDay+"_alt"].filter(vk=>hasData(data[vk]));
     if(!keysToShow.length)return;
-
-    // Check there's actually data in at least one key
-    const hasAny=keysToShow.some(k=>hasData(data[k]));
-    if(!hasAny)return;
 
     const sessionNum=dt.match(/_s(\d+)$/);
     const d=new Date((baseDate||dt)+"T12:00:00");
@@ -1437,7 +1404,8 @@ function renderHist(){
 
       sessionHtml+=`<div style="font-size:8.1px;letter-spacing:2px;color:${labelColor};padding:6px 14px 4px;font-weight:700;">${esc(dayLabel)}${durStr?" · "+durStr:""}</div>`;
       allIds.forEach(id=>{
-        const name=resolveExName(id);
+        // Use name snapshot from meta if available, else live lookup
+        const name=(meta.names&&meta.names[id])||resolveExName(id);
         const ss=sd[id]||[];
         sessionHtml+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
@@ -1457,7 +1425,7 @@ function renderHist(){
       ${sessionHtml}
     </div>`;
   });
-  el.innerHTML=html||`<div class="no-hist">No sessions logged yet for this filter.</div>`;
+  el.innerHTML=html||`<div class="no-hist">No sessions logged yet.</div>`;
 }
 
 // ── VIEW SWITCHING ────────────────────────────────────────────────────
@@ -1535,34 +1503,77 @@ if("serviceWorker"in navigator){
 }
 
 
-// ── EXPORT / IMPORT ──────────────────────────────────────────────────
-function exportHistory(){
-  const data=localStorage.getItem(SK_LOGS)||"{}";
-  const blob=new Blob([data],{type:"application/json"});
+// ── EXPORT HISTORY AS TEXT ────────────────────────────────────────────
+function exportHistoryText(){
+  const lines=[];
+  lines.push("PROGRESS LADDER — WORKOUT HISTORY");
+  lines.push("Exported: "+new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"}));
+  lines.push("═".repeat(50));
+
+  const entries=Object.entries(logs)
+    .sort(([a],[b])=>b.localeCompare(a));
+
+  if(!entries.length){alert("No history to export.");return;}
+
+  entries.forEach(([dt,data])=>{
+    const baseDate=dt.replace(/_s\d+$/,'');
+    const sessionNum=dt.match(/_s(\d+)$/);
+    const d=new Date(baseDate+"T12:00:00");
+    const dateStr=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+    const sessionLabel=sessionNum?` — Session ${sessionNum[1]}`:'';
+
+    const dayKeys=Object.keys(data).filter(k=>k!=='_meta'&&hasData(data[k]));
+    if(!dayKeys.length)return;
+
+    lines.push("");
+    lines.push("▸ "+dateStr+sessionLabel);
+    lines.push("─".repeat(40));
+
+    dayKeys.forEach(vk=>{
+      const sd=data[vk]||{};
+      const allIds=Object.keys(sd).filter(id=>id!=='_meta'&&Array.isArray(sd[id])&&sd[id].length>0);
+      if(!allIds.length)return;
+
+      const isAlt=vk.endsWith("_alt");
+      const baseKey=isAlt?vk.slice(0,-4):vk;
+      const prog=isAlt?ALT:P;
+      const dayName=prog[baseKey]?prog[baseKey].sub:baseKey.replace(/_/g,' ').toUpperCase();
+      const meta=(data._meta&&data._meta[vk])||{};
+      let durStr="";
+      if(meta.durationMs){
+        const tot=Math.floor(meta.durationMs/1000);
+        const h=Math.floor(tot/3600),m=Math.floor((tot%3600)/60),s=tot%60;
+        durStr=h>0?" ("+h+"h "+m+"m)":m>0?" ("+m+"m "+String(s).padStart(2,"0")+"s)":s>0?" ("+s+"s)":"";
+      }
+      lines.push("  "+dayName+(isAlt?" [ALT]":"")+durStr);
+
+      allIds.forEach(id=>{
+        const name=(meta.names&&meta.names[id])||resolveExName(id);
+        const ss=sd[id]||[];
+        lines.push("    • "+name);
+        ss.forEach((s,i)=>{
+          if(s._skip){lines.push("      Set "+(i+1)+": SKIPPED");return;}
+          const parts=[];
+          if(s.reps)parts.push(s.reps);
+          if(s.note)parts.push(s.note);
+          const done=s.done?"✓":"○";
+          lines.push("      Set "+(i+1)+": "+done+" "+(parts.join(" — ")||"—"));
+        });
+      });
+    });
+  });
+
+  lines.push("");
+  lines.push("═".repeat(50));
+  lines.push("End of history");
+
+  const text=lines.join("\n");
+  const blob=new Blob([text],{type:"text/plain;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="workout_history_"+todayKey()+".json";
+  a.download="workout_history_"+todayKey()+".txt";
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-}
-function importHistory(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      const incoming=JSON.parse(ev.target.result);
-      const existing=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");
-      const merged=Object.assign({},incoming,existing);
-      localStorage.setItem(SK_LOGS,JSON.stringify(merged));
-      logs=merged;
-      flash();
-      renderHist();
-    }catch(err){
-      alert("Import failed — invalid JSON file.");
-    }
-    e.target.value="";
-  };
-  reader.readAsText(file);
 }
 // ── INIT ─────────────────────────────────────────────────────────────
 load();
