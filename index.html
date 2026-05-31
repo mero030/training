@@ -487,9 +487,20 @@ function loadDays(){
 }
 function saveDays(){localStorage.setItem(SK_DAYS,JSON.stringify(DAYS));}
 
-const SK_ALT="training_program_alt_v1";
+const SK_ALT="training_program_alt_v2";
 const SK_LOGS="training_logs_v2";
-const SK_PROG="training_program_v4";
+const SK_PROG="training_program_v5";
+const SK_DAYS_MIGRATED="training_days_migrated_v2";
+
+// One-time migration: if old program keys exist, clear them so new defaults load
+(function migrate(){
+  if(!localStorage.getItem(SK_DAYS_MIGRATED)){
+    localStorage.removeItem("training_program_v4");
+    localStorage.removeItem("training_program_alt_v1");
+    localStorage.removeItem("training_days_v2");
+    localStorage.setItem(SK_DAYS_MIGRATED,"1");
+  }
+})();
 
 // ── STATE ─────────────────────────────────────────────────────────────
 function guessDay(){
