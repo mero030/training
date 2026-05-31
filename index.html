@@ -71,8 +71,6 @@ button{cursor:pointer;}
 #day-tabs{display:flex;border-top:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .dtab{flex:1;min-width:56px;padding:9px 2px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:8.1px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
 .dtab.on{background:var(--card);}
-.dtab.tab-drag-over{border-bottom-color:var(--blue)!important;background:#001a3a!important;opacity:0.85;}
-.dtab.tab-dragging{opacity:0.4;}
 .dtab-sub{font-size:6.3px;letter-spacing:1px;opacity:0.65;}
 
 /* SCROLL */
@@ -506,6 +504,8 @@ let mode="today",variant="main";
 let logs={},P={},ALT={};
 let confirmCb=null,expandedEx=null;
 let dragSrc=null,dragLastTarget=null,touchDragId=null,touchLastTarget=null;
+// Tab reorder drag state
+let tabDragSrc=null,tabDragLast=null,tabTouchSrc=null,tabTouchLast=null;
 
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function yesterdayKey(){
@@ -711,18 +711,19 @@ function renderTabs(){
     const label=P[dk]?P[dk].sub:dk;
     const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===day;
+    const editing=mode==="edit";
     return`<button class="dtab${on?" on":""}" id="tab-${dk}"
-      draggable="true"
-      ondragstart="tabDragStart(event,'${dk}')"
-      ondragover="tabDragOver(event,'${dk}')"
-      ondragend="tabDragEnd(event)"
-      ondrop="tabDrop(event,'${dk}')"
-      ontouchstart="tabTouchStart(event,'${dk}')"
-      ontouchmove="tabTouchMove(event)"
-      ontouchend="tabTouchEnd(event)"
-      onclick="tabClick(event,'${dk}')"
-      style="border-bottom-color:${on?color:"transparent"};color:${on?color:"var(--muted)"};background:${on?"var(--card)":"transparent"}">
+      style="border-bottom-color:${on?color:"transparent"};color:${on?color:"var(--muted)"};background:${on?"var(--card)":"transparent"};position:relative;${editing?"cursor:grab;":""}"
+      onclick="setDay('${dk}')"
+      draggable="${editing}"
+      ondragstart="${editing?"tabDragStart(event,'"+dk+"')":" "}"
+      ondragend="${editing?"tabDragEnd(event,'"+dk+"')":" "}"
+      ondragover="${editing?"tabDragOver(event,'"+dk+"')":" "}"
+      ontouchstart="${editing?"tabTouchStart(event,'"+dk+"')":" "}"
+      ontouchmove="${editing?"tabTouchMove(event)":" "}"
+      ontouchend="${editing?"tabTouchEnd(event,'"+dk+"')":" "}">
       ${esc(label)}
+      ${editing?`<span style="position:absolute;top:2px;right:2px;font-size:7px;color:${on?color+"88":"#444"};line-height:1;pointer-events:none">⠿</span>`:""}
     </button>`;
   }).join('');
   const htabsEl=document.getElementById("hist-day-tabs");
@@ -737,70 +738,60 @@ function renderTabs(){
   }).join('');
 }
 
-// ── TAB DRAG REORDER ──────────────────────────────────────────────────
-let tabDragSrc=null,tabDragMoved=false;
-let tabTouchId=null,tabTouchSrc=null,tabTouchLastTarget=null,tabTouchMoved=false;
-
-function tabDragStart(e,dk){
-  tabDragSrc=dk;tabDragMoved=false;
-  e.dataTransfer.effectAllowed="move";
-  setTimeout(()=>{const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-dragging");},0);
-}
-function tabDragOver(e,dk){
-  e.preventDefault();
-  if(!tabDragSrc||tabDragSrc===dk)return;
-  tabDragMoved=true;
-  document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("tab-drag-over"));
-  const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-drag-over");
-}
-function tabDrop(e,dk){
-  e.preventDefault();
-  if(!tabDragSrc||tabDragSrc===dk)return;
-  reorderDays(tabDragSrc,dk);
-}
-function tabDragEnd(){
-  document.querySelectorAll(".dtab").forEach(t=>{t.classList.remove("tab-dragging","tab-drag-over");});
-  tabDragSrc=null;
-}
-function tabClick(e,dk){
-  if(tabDragMoved){tabDragMoved=false;return;}
-  setDay(dk);
-}
-
-function tabTouchStart(e,dk){
-  tabTouchSrc=dk;tabTouchLastTarget=dk;tabTouchMoved=false;tabTouchId=e.touches[0].identifier;
-  const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-dragging");
-}
-function tabTouchMove(e){
-  if(!tabTouchSrc)return;
-  const touch=Array.from(e.touches).find(t=>t.identifier===tabTouchId);
-  if(!touch)return;
-  const hit=document.elementFromPoint(touch.clientX,touch.clientY);
-  if(!hit)return;
-  const tab=hit.closest(".dtab");
-  if(!tab||!tab.id)return;
-  const dk=tab.id.replace("tab-","");
-  if(dk===tabTouchLastTarget)return;
-  if(dk!==tabTouchSrc){
-    tabTouchMoved=true;e.preventDefault();
-    tabTouchLastTarget=dk;
-    document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("tab-drag-over"));
-    tab.classList.add("tab-drag-over");
-    reorderDays(tabTouchSrc,dk);
-    tabTouchSrc=dk; // follow the moved item
-  }
-}
-function tabTouchEnd(){
-  document.querySelectorAll(".dtab").forEach(t=>{t.classList.remove("tab-dragging","tab-drag-over");});
-  tabTouchSrc=null;tabTouchLastTarget=null;tabTouchId=null;
-}
-
 function reorderDays(fromDk,toDk){
+  if(fromDk===toDk)return;
   const fi=DAYS.indexOf(fromDk),ti=DAYS.indexOf(toDk);
   if(fi<0||ti<0)return;
   const[item]=DAYS.splice(fi,1);DAYS.splice(ti,0,item);
-  saveDays();renderTabs();
-  if(mode==="history")renderHist();
+  saveDays();renderTabs();renderHist();
+}
+function tabDragStart(e,dk){
+  tabDragSrc=dk;tabDragLast=dk;
+  e.dataTransfer.effectAllowed="move";
+  setTimeout(()=>{const el=document.getElementById("tab-"+dk);if(el)el.style.opacity="0.4";},0);
+}
+function tabDragEnd(e,dk){
+  const el=document.getElementById("tab-"+dk);if(el)el.style.opacity="1";
+  tabDragSrc=null;tabDragLast=null;
+}
+function tabDragOver(e,dk){
+  e.preventDefault();e.stopPropagation();
+  if(!tabDragSrc||tabDragSrc===dk)return;
+  if(dk===tabDragLast)return;
+  tabDragLast=dk;
+  reorderDays(tabDragSrc,dk);
+}
+// Touch drag for tabs
+let tabTouchTimer=null;
+function tabTouchStart(e,dk){
+  // Only activate touch-drag after a long press (400ms), so normal taps still work
+  tabTouchSrc=null;
+  tabTouchTimer=setTimeout(()=>{
+    tabTouchSrc=dk;tabTouchLast=dk;
+    const el=document.getElementById("tab-"+dk);if(el)el.style.opacity="0.45";
+    if(navigator.vibrate)navigator.vibrate(40);
+  },400);
+}
+function tabTouchMove(e){
+  if(!tabTouchSrc){clearTimeout(tabTouchTimer);return;}
+  e.preventDefault();
+  const t=e.touches[0],hit=document.elementFromPoint(t.clientX,t.clientY);
+  if(!hit)return;
+  const tab=hit.closest(".dtab");
+  if(!tab||!tab.id)return;
+  const tid=tab.id.replace("tab-","");
+  if(DAYS.includes(tid)&&tid!==tabTouchLast){tabTouchLast=tid;reorderDays(tabTouchSrc,tid);}
+}
+function tabTouchEnd(e,dk){
+  clearTimeout(tabTouchTimer);
+  if(tabTouchSrc){
+    const el=document.getElementById("tab-"+tabTouchSrc);if(el)el.style.opacity="1";
+    tabTouchSrc=null;tabTouchLast=null;
+    e.preventDefault(); // prevent click from firing after drag
+  }else{
+    e.preventDefault(); // prevent ghost click; we handle tap here
+    setDay(dk);
+  }
 }
 
 function onPhaseChange(id){
@@ -1393,6 +1384,7 @@ function setMode(m){
   document.getElementById("stopwatch-wrap").style.display=showToday?"flex":"none";
   if(m==="history")renderHist();
   if(m==="edit"){expandedEx=null;renderEdit();}
+  renderTabs();
 }
 function setDay(d){
   day=d;expandedEx=null;variant="main";
