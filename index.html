@@ -71,6 +71,8 @@ button{cursor:pointer;}
 #day-tabs{display:flex;border-top:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .dtab{flex:1;min-width:56px;padding:9px 2px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:8.1px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
 .dtab.on{background:var(--card);}
+.dtab.tab-drag-over{border-bottom-color:var(--blue)!important;background:#001a3a!important;opacity:0.85;}
+.dtab.tab-dragging{opacity:0.4;}
 .dtab-sub{font-size:6.3px;letter-spacing:1px;opacity:0.65;}
 
 /* SCROLL */
@@ -267,7 +269,6 @@ button{cursor:pointer;}
       </div>
       <div id="prog-track"><div id="prog-fill" style="width:0"></div></div>
     </div>
-    <!-- STOPWATCH -->
     <div id="stopwatch-wrap">
       <div id="sw-display">00:00</div>
       <div id="sw-btns">
@@ -276,7 +277,6 @@ button{cursor:pointer;}
         <button class="sw-btn new-session" id="sw-newsession" onclick="newSession()">✓ NEW SESSION</button>
       </div>
     </div>
-    <!-- Day tabs — populated by renderTabs() -->
     <div id="day-tabs"></div>
   </div>
 
@@ -377,74 +377,103 @@ button{cursor:pointer;}
 <script>
 // ── PROGRAM ───────────────────────────────────────────────────────────
 const DEFAULT_P={
-  mon:{label:"DAY 1",sub:"UPPER",color:"#4a9eff",exercises:[
-    {id:"mon_wu1",name:"External Rotation",        target:"2 × 12–15",  phase:"Warm-Up"},
-    {id:"mon_wu2",name:"Active Hang",              target:"5 × 15s",    phase:"Warm-Up"},
-    {id:"mon_wu3",name:"Scapular Pull-Ups",        target:"3 × 6",      phase:"Warm-Up"},
-    {id:"mon_wu4",name:"Serratus Push-Ups",        target:"2 × 15",     phase:"Warm-Up"},
-    {id:"mon_wu5",name:"Wrist Circles + Rocks",    target:"2 × 10",     phase:"Warm-Up"},
-    {id:"mon_s1", name:"Slow Push-Ups",            target:"4 × 6–8",    phase:"Strength"},
-    {id:"mon_s2", name:"TRX / Body Rows",          target:"4 × 8–10",   phase:"Strength"},
-    {id:"mon_s3", name:"Pike Hold Progression",    target:"3 × 15–20s", phase:"Strength"},
-    {id:"mon_s4", name:"Side Plank",               target:"3 × 30–40s", phase:"Strength"},
-    {id:"mon_s5", name:"Prone Y Raises",           target:"3 × 12",     phase:"Strength"},
-    {id:"mon_s6", name:"Dead Hang — Max Hold",     target:"1 × max",    phase:"Strength"},
+  upper1:{label:"UPPER 1",sub:"UPPER 1",color:"#4a9eff",exercises:[
+    {id:"u1_wu1",name:"Arm Circles",           target:"10–12 reps each arm",  phase:"Warm-Up"},
+    {id:"u1_wu2",name:"90° External Rotation", target:"10–15 reps",           phase:"Warm-Up"},
+    {id:"u1_wu3",name:"Wall Slides",           target:"2 × 10",               phase:"Warm-Up"},
+    {id:"u1_wu4",name:"The Clock",             target:"5–10 reps",            phase:"Warm-Up"},
+    {id:"u1_wu5",name:"Table Top Raises",      target:"5–10 reps",            phase:"Warm-Up"},
+    {id:"u1_s1", name:"Rows",                  target:"3 × 16",               phase:"Strength"},
+    {id:"u1_s2", name:"Slow Push-Ups",         target:"2 × 12",               phase:"Strength"},
+    {id:"u1_s3", name:"Negative Chin-Ups",     target:"2 × 3",                phase:"Strength"},
+    {id:"u1_c1", name:"Superman",              target:"2 × 15",               phase:"Core"},
+    {id:"u1_c2", name:"Side Plank",            target:"1 × max",              phase:"Core"},
+    {id:"u1_cd1",name:"Thread the Needle",     target:"Hold each side",        phase:"Cool Down"},
+    {id:"u1_cd2",name:"Butcher's Block",       target:"Hold",                  phase:"Cool Down"},
+    {id:"u1_cd3",name:"Thoracic Opener",       target:"Hold",                  phase:"Cool Down"},
   ]},
-  tue:{label:"DAY 2",sub:"LOWER",color:"#4a9eff",exercises:[
-    {id:"tue_wu1",name:"Tibialis Raises",          target:"3 × 20",     phase:"Warm-Up"},
-    {id:"tue_wu2",name:"Slow Calf Raises",         target:"3 × 15",     phase:"Warm-Up"},
-    {id:"tue_wu3",name:"Assisted Deep Squat",      target:"2 × 45s",    phase:"Warm-Up"},
-    {id:"tue_s1", name:"Tempo Squats",             target:"3 × 7",      phase:"Strength"},
-    {id:"tue_s2", name:"Single-Leg Glute Bridge",  target:"3 × 8–12",   phase:"Strength"},
-    {id:"tue_s3", name:"Heel Slides",              target:"3 × 10",     phase:"Strength"},
-    {id:"tue_s4", name:"Step-Downs",               target:"4 × 5",      phase:"Strength"},
-    {id:"tue_s5", name:"Side-Lying Leg Raises",    target:"3 × 12–15",  phase:"Strength"},
-    {id:"tue_s6", name:"Wall Sit — Max Hold",      target:"1 × max",    phase:"Strength"},
+  upper2:{label:"UPPER 2",sub:"UPPER 2",color:"#4a9eff",exercises:[
+    {id:"u2_wu1",name:"Arm Circles",                   target:"10–12 reps each arm",  phase:"Warm-Up"},
+    {id:"u2_wu2",name:"90° External Rotation",         target:"10–15 reps",           phase:"Warm-Up"},
+    {id:"u2_wu3",name:"Wall Slides",                   target:"2 × 10",               phase:"Warm-Up"},
+    {id:"u2_wu4",name:"Y-T-W Raises",                  target:"5 reps each shape",    phase:"Warm-Up"},
+    {id:"u2_wu5",name:"Shoulder Extension with Stick", target:"3 reps × 5s hold",     phase:"Warm-Up"},
+    {id:"u2_s1", name:"Rows",                          target:"3 × 18",               phase:"Strength"},
+    {id:"u2_s2", name:"Push-Ups",                      target:"2 × 15",               phase:"Strength"},
+    {id:"u2_s3", name:"Pike Hold",                     target:"1 × max hold",         phase:"Strength"},
+    {id:"u2_s4", name:"Active Hang",                   target:"2 × 20–40s",           phase:"Strength"},
+    {id:"u2_c1", name:"Hollow Hold",                   target:"2 × max hold",         phase:"Core"},
+    {id:"u2_c2", name:"Back Extensions",               target:"2 × max hold",         phase:"Core"},
+    {id:"u2_c3", name:"Leg Raises",                    target:"10–20 reps",           phase:"Core"},
+    {id:"u2_cd1",name:"Thread the Needle",             target:"Hold each side",        phase:"Cool Down"},
+    {id:"u2_cd2",name:"Seated Hands to Sky",           target:"Hold",                  phase:"Cool Down"},
+    {id:"u2_cd3",name:"Thoracic Opener",               target:"Hold",                  phase:"Cool Down"},
   ]},
-  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
-    {id:"mob_1",  name:"Tom Merrick Full Body Flexibility", target:"60 min follow along", phase:"Session"},
-    {id:"mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser", phase:"Session"},
+  upper3:{label:"UPPER 3",sub:"UPPER 3",color:"#4a9eff",exercises:[
+    {id:"u3_wu1",name:"Arm Circles",            target:"10–12 reps each arm",  phase:"Warm-Up"},
+    {id:"u3_wu2",name:"Prone External Rotation",target:"10–15 reps",           phase:"Warm-Up"},
+    {id:"u3_wu3",name:"Wall Slides",            target:"2 × 10",               phase:"Warm-Up"},
+    {id:"u3_wu4",name:"Prone Overhead Raise",   target:"5 reps × 7s hold",     phase:"Warm-Up"},
+    {id:"u3_wu5",name:"Table Top Raises",       target:"5 reps",               phase:"Warm-Up"},
+    {id:"u3_s1", name:"Horizontal Rows",        target:"3 × 12",               phase:"Strength"},
+    {id:"u3_s2", name:"Crawling",               target:"2 × 1 min",            phase:"Strength"},
+    {id:"u3_s3", name:"Scapular Pull-Ups",      target:"2 × 10–15",            phase:"Strength"},
+    {id:"u3_s4", name:"Dead Hang",              target:"1 × max hold",         phase:"Strength"},
+    {id:"u3_c1", name:"Bird Dog",               target:"2 × 14–24",            phase:"Core"},
+    {id:"u3_c2", name:"Dead Bug",               target:"2 × 10–20",            phase:"Core"},
+    {id:"u3_cd1",name:"Thread the Needle",      target:"Hold each side",        phase:"Cool Down"},
+    {id:"u3_cd2",name:"Child's Pose",           target:"Hold",                  phase:"Cool Down"},
+    {id:"u3_cd3",name:"Thoracic Opener",        target:"Hold",                  phase:"Cool Down"},
   ]},
-  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
-    {id:"cor_p1", name:"Dead Bug",            target:"3 × 8 each side", phase:"Prepare"},
-    {id:"cor_p2", name:"Bird Dog",            target:"3 × 8 each side", phase:"Prepare"},
-    {id:"cor_s1", name:"Hollow Hold",         target:"3 × 20–30s",      phase:"Strength"},
-    {id:"cor_s2", name:"Reverse Crunch",      target:"3 × 12",          phase:"Strength"},
-    {id:"cor_s3", name:"Back Extensions",     target:"3 × 12",          phase:"Strength"},
-    {id:"cor_s4", name:"McGill Curl-Up",      target:"3 × 8",           phase:"Strength"},
-    {id:"cor_c1", name:"Child's Pose",        target:"2 × 60s",         phase:"Close"},
-    {id:"cor_c2", name:"Supine Spinal Twist", target:"90s each side",   phase:"Close"},
+  lower1:{label:"LOWER 1",sub:"LOWER 1",color:"#4a9eff",exercises:[
+    {id:"l1_wu1",name:"Tibialis Raises",          target:"2 × 20–45",               phase:"Warm-Up"},
+    {id:"l1_wu2",name:"Single Calf Raises",       target:"2 × 18–30",               phase:"Warm-Up"},
+    {id:"l1_wu3",name:"90/90 Transition",         target:"20 reps",                 phase:"Warm-Up"},
+    {id:"l1_wu4",name:"Internal Rotation",        target:"3 reps × 6s hold",        phase:"Warm-Up"},
+    {id:"l1_s1", name:"Wall Sit",                 target:"2 × 30–90s",              phase:"Strength"},
+    {id:"l1_s2", name:"Single-Leg Glute Bridge",  target:"2 × 10–16",               phase:"Strength"},
+    {id:"l1_s3", name:"Lunges",                   target:"2 × 10–15, 3s pause",     phase:"Strength"},
+    {id:"l1_s4", name:"Good Mornings",            target:"2 × 12–20",               phase:"Strength"},
+    {id:"l1_m1", name:"Low Cossack Side to Side", target:"16 reps",                 phase:"Mobility"},
+    {id:"l1_m2", name:"Couch Stretch",            target:"2 × 75s",                 phase:"Mobility"},
+  ]},
+  lower2:{label:"LOWER 2",sub:"LOWER 2",color:"#4a9eff",exercises:[
+    {id:"l2_wu1",name:"Tibialis Raises",         target:"2 × 20–45",               phase:"Warm-Up"},
+    {id:"l2_wu2",name:"Single Calf Raises",      target:"2 × 18–30",               phase:"Warm-Up"},
+    {id:"l2_wu3",name:"90/90 Transition",        target:"20 reps",                 phase:"Warm-Up"},
+    {id:"l2_wu4",name:"Internal Rotation",       target:"3 reps × 6s hold",        phase:"Warm-Up"},
+    {id:"l2_s1", name:"Wall Sit",                target:"2 × 30–90s",              phase:"Strength"},
+    {id:"l2_s2", name:"Single-Leg Glute Bridge", target:"2 × 10–16",               phase:"Strength"},
+    {id:"l2_s3", name:"Slow Squat",              target:"2 × 10–16",               phase:"Strength"},
+    {id:"l2_s4", name:"Side-Lying Leg Raises",   target:"2 × 20",                  phase:"Strength"},
+    {id:"l2_m1", name:"Squat to Pike",           target:"10 reps + 30s hold last", phase:"Mobility"},
+    {id:"l2_m2", name:"Butterfly",               target:"90s",                      phase:"Mobility"},
+  ]},
+  lower3:{label:"LOWER 3",sub:"LOWER 3",color:"#4a9eff",exercises:[
+    {id:"l3_wu1",name:"Tibialis Raises",        target:"2 × 20–45",               phase:"Warm-Up"},
+    {id:"l3_wu2",name:"Single Calf Raises",     target:"2 × 18–30",               phase:"Warm-Up"},
+    {id:"l3_wu3",name:"90/90 Transition",       target:"20 reps",                 phase:"Warm-Up"},
+    {id:"l3_wu4",name:"Internal Rotation",      target:"3 reps × 6s hold",        phase:"Warm-Up"},
+    {id:"l3_s1", name:"Glute Bridge",           target:"2 × 30–35",               phase:"Strength"},
+    {id:"l3_s2", name:"Step-Downs",             target:"2 × 10–14",               phase:"Strength"},
+    {id:"l3_s3", name:"Heel Slides",            target:"2 × 15–25",               phase:"Strength"},
+    {id:"l3_s4", name:"Side-Lying Leg Raises",  target:"2 × 20",                  phase:"Strength"},
+    {id:"l3_m1", name:"Pigeon",                 target:"60s each side",            phase:"Mobility"},
+    {id:"l3_m2", name:"Sumo Squat Hold",        target:"75s",                      phase:"Mobility"},
   ]},
 };
 
+// ALT workouts — empty by default, fill via Edit mode
 const DEFAULT_ALT={
-  mon:{label:"DAY 1",sub:"UPPER",color:"#4a9eff",exercises:[
-    {id:"alt_mon_wu1",name:"Active Hang",          target:"3 × 15s",   phase:"Warm-Up"},
-    {id:"alt_mon_wu2",name:"Wrist Circles + Rocks",target:"2 × 10",    phase:"Warm-Up"},
-    {id:"alt_mon_s1", name:"Slow Push-Ups",        target:"2 × 6",     phase:"Strength"},
-    {id:"alt_mon_s2", name:"TRX / Body Rows",      target:"2 × 8",     phase:"Strength"},
-    {id:"alt_mon_s3", name:"Dead Hang — Max Hold", target:"1 × max",   phase:"Strength"},
-  ]},
-  tue:{label:"DAY 2",sub:"LOWER",color:"#4a9eff",exercises:[
-    {id:"alt_tue_wu1",name:"Tibialis Raises",          target:"2 × 20",  phase:"Warm-Up"},
-    {id:"alt_tue_wu2",name:"Assisted Deep Squat",      target:"2 × 30s", phase:"Warm-Up"},
-    {id:"alt_tue_s1", name:"Tempo Squats",             target:"2 × 6",   phase:"Strength"},
-    {id:"alt_tue_s2", name:"Single-Leg Glute Bridge",  target:"2 × 8",   phase:"Strength"},
-    {id:"alt_tue_s3", name:"Wall Sit — Max Hold",      target:"1 × max", phase:"Strength"},
-  ]},
-  mob:{label:"DAY 3",sub:"MOBILITY",color:"#4a9eff",exercises:[
-    {id:"alt_mob_1",  name:"Tom Merrick Full Body Flexibility", target:"30 min — first half only", phase:"Session"},
-    {id:"alt_mob_2",  name:"youtu.be/aUm3qE2dvB8",             target:"Open link in browser",     phase:"Session"},
-  ]},
-  cor:{label:"DAY 4",sub:"CORE",color:"#4a9eff",exercises:[
-    {id:"alt_cor_p1", name:"Dead Bug",        target:"2 × 8 each side", phase:"Prepare"},
-    {id:"alt_cor_s1", name:"Hollow Hold",     target:"2 × 20s",         phase:"Strength"},
-    {id:"alt_cor_s2", name:"Reverse Crunch",  target:"2 × 10",          phase:"Strength"},
-    {id:"alt_cor_c1", name:"Child's Pose",    target:"2 × 60s",         phase:"Close"},
-  ]},
+  upper1:{label:"UPPER 1",sub:"UPPER 1",color:"#4a9eff",exercises:[]},
+  upper2:{label:"UPPER 2",sub:"UPPER 2",color:"#4a9eff",exercises:[]},
+  upper3:{label:"UPPER 3",sub:"UPPER 3",color:"#4a9eff",exercises:[]},
+  lower1:{label:"LOWER 1",sub:"LOWER 1",color:"#4a9eff",exercises:[]},
+  lower2:{label:"LOWER 2",sub:"LOWER 2",color:"#4a9eff",exercises:[]},
+  lower3:{label:"LOWER 3",sub:"LOWER 3",color:"#4a9eff",exercises:[]},
 };
 
-const DEFAULT_DAYS=["mon","tue","mob","cor"];
+const DEFAULT_DAYS=["upper1","upper2","upper3","lower1","lower2","lower3"];
 
 const SK_DAYS="training_days_v2";
 let DAYS=[...DEFAULT_DAYS];
@@ -682,7 +711,16 @@ function renderTabs(){
     const label=P[dk]?P[dk].sub:dk;
     const color=P[dk]?P[dk].color:"#4a9eff";
     const on=dk===day;
-    return`<button class="dtab${on?" on":""}" onclick="setDay('${dk}')" id="tab-${dk}"
+    return`<button class="dtab${on?" on":""}" id="tab-${dk}"
+      draggable="true"
+      ondragstart="tabDragStart(event,'${dk}')"
+      ondragover="tabDragOver(event,'${dk}')"
+      ondragend="tabDragEnd(event)"
+      ondrop="tabDrop(event,'${dk}')"
+      ontouchstart="tabTouchStart(event,'${dk}')"
+      ontouchmove="tabTouchMove(event)"
+      ontouchend="tabTouchEnd(event)"
+      onclick="tabClick(event,'${dk}')"
       style="border-bottom-color:${on?color:"transparent"};color:${on?color:"var(--muted)"};background:${on?"var(--card)":"transparent"}">
       ${esc(label)}
     </button>`;
@@ -697,6 +735,72 @@ function renderTabs(){
       ${esc(label.slice(0,7))}
     </button>`;
   }).join('');
+}
+
+// ── TAB DRAG REORDER ──────────────────────────────────────────────────
+let tabDragSrc=null,tabDragMoved=false;
+let tabTouchId=null,tabTouchSrc=null,tabTouchLastTarget=null,tabTouchMoved=false;
+
+function tabDragStart(e,dk){
+  tabDragSrc=dk;tabDragMoved=false;
+  e.dataTransfer.effectAllowed="move";
+  setTimeout(()=>{const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-dragging");},0);
+}
+function tabDragOver(e,dk){
+  e.preventDefault();
+  if(!tabDragSrc||tabDragSrc===dk)return;
+  tabDragMoved=true;
+  document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("tab-drag-over"));
+  const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-drag-over");
+}
+function tabDrop(e,dk){
+  e.preventDefault();
+  if(!tabDragSrc||tabDragSrc===dk)return;
+  reorderDays(tabDragSrc,dk);
+}
+function tabDragEnd(){
+  document.querySelectorAll(".dtab").forEach(t=>{t.classList.remove("tab-dragging","tab-drag-over");});
+  tabDragSrc=null;
+}
+function tabClick(e,dk){
+  if(tabDragMoved){tabDragMoved=false;return;}
+  setDay(dk);
+}
+
+function tabTouchStart(e,dk){
+  tabTouchSrc=dk;tabTouchLastTarget=dk;tabTouchMoved=false;tabTouchId=e.touches[0].identifier;
+  const el=document.getElementById("tab-"+dk);if(el)el.classList.add("tab-dragging");
+}
+function tabTouchMove(e){
+  if(!tabTouchSrc)return;
+  const touch=Array.from(e.touches).find(t=>t.identifier===tabTouchId);
+  if(!touch)return;
+  const hit=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(!hit)return;
+  const tab=hit.closest(".dtab");
+  if(!tab||!tab.id)return;
+  const dk=tab.id.replace("tab-","");
+  if(dk===tabTouchLastTarget)return;
+  if(dk!==tabTouchSrc){
+    tabTouchMoved=true;e.preventDefault();
+    tabTouchLastTarget=dk;
+    document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("tab-drag-over"));
+    tab.classList.add("tab-drag-over");
+    reorderDays(tabTouchSrc,dk);
+    tabTouchSrc=dk; // follow the moved item
+  }
+}
+function tabTouchEnd(){
+  document.querySelectorAll(".dtab").forEach(t=>{t.classList.remove("tab-dragging","tab-drag-over");});
+  tabTouchSrc=null;tabTouchLastTarget=null;tabTouchId=null;
+}
+
+function reorderDays(fromDk,toDk){
+  const fi=DAYS.indexOf(fromDk),ti=DAYS.indexOf(toDk);
+  if(fi<0||ti<0)return;
+  const[item]=DAYS.splice(fi,1);DAYS.splice(ti,0,item);
+  saveDays();renderTabs();
+  if(mode==="history")renderHist();
 }
 
 function onPhaseChange(id){
@@ -795,9 +899,8 @@ function swReset(){
   localStorage.removeItem("sw_state");
 }
 
-// ── NEW SESSION (fixed: archives before clearing) ─────────────────────
+// ── NEW SESSION ───────────────────────────────────────────────────────
 function newSession(){
-  // 1. Stop stopwatch if still running and save duration
   if(swRunning){
     swSavedMs=swGetElapsed();
     swRunning=false;
@@ -810,7 +913,6 @@ function newSession(){
     closeSession();
   }
 
-  // 2. Archive current session under a unique key before clearing
   const today=todayKey();
   const mainDk=day;
   const altDk=day+'_alt';
@@ -818,14 +920,12 @@ function newSession(){
   const hasAlt=logs[today]&&hasData(logs[today][altDk]);
 
   if(hasMain||hasAlt){
-    // Find a free archive key: today_s2, today_s3, ...
     let n=2,archiveKey;
     do{archiveKey=today+'_s'+n++;}while(logs[archiveKey]);
 
     logs[archiveKey]={};
     if(hasMain)logs[archiveKey][mainDk]=JSON.parse(JSON.stringify(logs[today][mainDk]));
     if(hasAlt) logs[archiveKey][altDk] =JSON.parse(JSON.stringify(logs[today][altDk]));
-    // Copy meta too
     if(logs[today]&&logs[today]._meta){
       logs[archiveKey]._meta={};
       if(logs[today]._meta[mainDk])logs[archiveKey]._meta[mainDk]=JSON.parse(JSON.stringify(logs[today]._meta[mainDk]));
@@ -833,7 +933,6 @@ function newSession(){
     }
   }
 
-  // 3. Clear today's active session
   localStorage.removeItem('session_closed_'+mainDk+'_'+today);
   localStorage.removeItem('session_closed_'+altDk+'_'+today);
   if(logs[today]){
@@ -847,7 +946,6 @@ function newSession(){
     if(!remaining.length)delete logs[today];
   }
 
-  // 4. Reset stopwatch UI
   swSavedMs=0;swStartEpoch=0;
   localStorage.removeItem("sw_state");
   document.getElementById("sw-display").textContent="00:00";
@@ -1215,14 +1313,12 @@ function renderHist(){
     b.style.borderColor=on?col+"55":"";
   });
 
-  // Match both exact day keys and archived keys (today_s2, today_s3, ...)
   const hist=Object.entries(logs)
     .filter(([dt,data])=>{
       const m=data[histDay],a=data[histDay+"_alt"];
       return hasData(m)||hasData(a);
     })
     .map(([dt,data])=>{
-      // Normalise archive keys like 2025-05-12_s2 → display as the base date
       const baseDate=dt.replace(/_s\d+$/,'');
       return[dt,data,baseDate];
     })
