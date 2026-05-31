@@ -309,6 +309,7 @@ button{cursor:pointer;}
       <div id="edit-day-header"></div>
       <div id="edit-list"></div>
       <button class="add-ex-btn" onclick="addExercise()">+ ADD EXERCISE</button>
+      <button onclick="syncToCode()" style="width:100%;margin-top:10px;padding:12px;background:#001a3a;border:1px solid #4a9eff55;color:var(--blue);font-size:9px;font-weight:700;letter-spacing:1.5px;font-family:inherit;">⬇ SYNC CHANGES TO CODE FILE</button>
     </div>
   </div>
 </div>
@@ -678,6 +679,13 @@ function addExercise(){
 }
 function deleteExercise(id){
   confirm2("Delete Exercise","Remove this exercise from the program?",()=>{
+    // Save name to graveyard so history stays readable
+    const ex=curP()[day].exercises.find(e=>e.id===id);
+    if(ex){
+      const graveyard=JSON.parse(localStorage.getItem("ex_graveyard")||"{}");
+      graveyard[id]=ex.name;
+      localStorage.setItem("ex_graveyard",JSON.stringify(graveyard));
+    }
     curP()[day].exercises=curP()[day].exercises.filter(e=>e.id!==id);
     if(expandedEx===id)expandedEx=null;
     save();renderEdit();renderToday();
@@ -1340,6 +1348,11 @@ function resolveExName(exId){
       if(f)return f.name;
     }
   }
+  // Check graveyard of deleted exercises
+  try{
+    const graveyard=JSON.parse(localStorage.getItem("ex_graveyard")||"{}");
+    if(graveyard[exId])return graveyard[exId];
+  }catch(e){}
   // Fall back to name snapshot stored in log at session time
   return exId.replace(/_/g,' ');
 }
@@ -1575,6 +1588,43 @@ function exportHistoryText(){
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
+// ── SYNC TO CODE ──────────────────────────────────────────────────────
+function syncToCode(){
+  function serializeEx(ex){
+    return `    {id:${JSON.stringify(ex.id)},name:${JSON.stringify(ex.name)},target:${JSON.stringify(ex.target)},phase:${JSON.stringify(ex.phase)}}`;
+  }
+  function serializeDay(dk,prog){
+    const d=prog[dk];
+    const exLines=d.exercises.map(serializeEx).join(',\n');
+    return `  ${dk}:{label:${JSON.stringify(d.label)},sub:${JSON.stringify(d.sub)},color:${JSON.stringify(d.color)},exercises:[\n${exLines}\n  ]}`;
+  }
+  const pSrc   ="const DEFAULT_P={\n"+DAYS.map(dk=>serializeDay(dk,P)).join(',\n')+"\n};";
+  const altSrc ="const DEFAULT_ALT={\n"+DAYS.map(dk=>serializeDay(dk,ALT)).join(',\n')+"\n};";
+  const daysSrc=`const DEFAULT_DAYS=${JSON.stringify(DAYS)};`;
+
+  // Use outerHTML — works for both file:// and http://
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+
+  html=replaceBlock(html,"const DEFAULT_P={"      ,"const DEFAULT_ALT="  ,pSrc+"\n\n");
+  html=replaceBlock(html,"const DEFAULT_ALT={"    ,"const DEFAULT_DAYS=" ,altSrc+"\n\n");
+  html=html.replace(/const DEFAULT_DAYS=\[.*?\];/,daysSrc);
+
+  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="progress_ladder.html";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  flash();
+}
+
+function replaceBlock(html,startMarker,endMarker,replacement){
+  const si=html.indexOf(startMarker);
+  const ei=html.indexOf(endMarker,si);
+  if(si===-1||ei===-1)return html;
+  return html.slice(0,si)+replacement+html.slice(ei);
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────
 load();
 renderTabs();
