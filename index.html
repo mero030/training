@@ -1312,17 +1312,63 @@ function renderEdit(){
 }
 
 // ── RENDER HISTORY ────────────────────────────────────────────────────
-// Build a flat name lookup across ALL programs (current + any id seen in logs)
-function resolveExName(exId, dayKey){
-  // Search current P and ALT first
+// Legacy exercise name lookup (old program IDs → readable names)
+const LEGACY_NAMES={
+  // Upper (mon)
+  "mon_wu1":"External Rotation","mon_wu2":"Active Hang","mon_wu3":"Scapular Pull-Ups",
+  "mon_wu4":"Serratus Push-Ups","mon_wu5":"Wrist Circles + Rocks",
+  "mon_s1":"Slow Push-Ups","mon_s2":"TRX / Body Rows","mon_s3":"Pike Hold Progression",
+  "mon_s4":"Side Plank","mon_s5":"Prone Y Raises","mon_s6":"Dead Hang — Max Hold",
+  // Lower (tue)
+  "tue_wu1":"Tibialis Raises","tue_wu2":"Slow Calf Raises","tue_wu3":"Assisted Deep Squat",
+  "tue_s1":"Tempo Squats","tue_s2":"Single-Leg Glute Bridge","tue_s3":"Heel Slides",
+  "tue_s4":"Step-Downs","tue_s5":"Side-Lying Leg Raises","tue_s6":"Wall Sit — Max Hold",
+  // Mobility (mob)
+  "mob_1":"Tom Merrick Full Body Flexibility","mob_2":"youtu.be/aUm3qE2dvB8",
+  // Core (cor)
+  "cor_p1":"Dead Bug","cor_p2":"Bird Dog",
+  "cor_s1":"Hollow Hold","cor_s2":"Reverse Crunch","cor_s3":"Back Extensions",
+  "cor_s4":"McGill Curl-Up",
+  "cor_c1":"Child's Pose","cor_c2":"Supine Spinal Twist",
+  // Alt Upper (mon_alt)
+  "alt_mon_wu1":"Active Hang","alt_mon_wu2":"Wrist Circles + Rocks",
+  "alt_mon_s1":"Slow Push-Ups","alt_mon_s2":"TRX / Body Rows","alt_mon_s3":"Dead Hang — Max Hold",
+  // Alt Lower (tue_alt)
+  "alt_tue_wu1":"Tibialis Raises","alt_tue_wu2":"Assisted Deep Squat",
+  "alt_tue_s1":"Tempo Squats","alt_tue_s2":"Single-Leg Glute Bridge","alt_tue_s3":"Wall Sit — Max Hold",
+  // Alt Mobility (mob_alt)
+  "alt_mob_1":"Tom Merrick Full Body Flexibility","alt_mob_2":"youtu.be/aUm3qE2dvB8",
+  // Alt Core (cor_alt)
+  "alt_cor_p1":"Dead Bug","alt_cor_s1":"Hollow Hold","alt_cor_s2":"Reverse Crunch","alt_cor_c1":"Child's Pose",
+};
+
+// Legacy day key → readable label
+const LEGACY_DAY_LABELS={
+  "mon":"Upper","tue":"Lower","mob":"Mobility","cor":"Core",
+  "mon_alt":"Upper (Alt)","tue_alt":"Lower (Alt)","mob_alt":"Mobility (Alt)","cor_alt":"Core (Alt)",
+};
+
+function resolveExName(exId){
+  // Check legacy table first
+  if(LEGACY_NAMES[exId])return LEGACY_NAMES[exId];
+  // Search current P and ALT
   for(const src of [P,ALT]){
     for(const dk of Object.keys(src)){
       const f=(src[dk].exercises||[]).find(e=>e.id===exId);
       if(f)return f.name;
     }
   }
-  // Fall back to the raw id, stripping prefixes to make it readable
-  return exId.replace(/^[a-z0-9]+_/,'').replace(/_/g,' ');
+  // Last resort: clean up the raw id
+  return exId.replace(/_/g,' ');
+}
+
+function resolveDayLabel(vk){
+  if(LEGACY_DAY_LABELS[vk])return LEGACY_DAY_LABELS[vk];
+  const isAlt=vk.endsWith("_alt");
+  const baseKey=isAlt?vk.slice(0,-4):vk;
+  const prog=isAlt?ALT:P;
+  const sub=prog[baseKey]?prog[baseKey].sub:baseKey.toUpperCase();
+  return sub+(isAlt?" (Alt)":"");
 }
 
 function renderHist(){
@@ -1379,12 +1425,7 @@ function renderHist(){
       if(!allIds.length)return;
 
       const isAlt=vk.endsWith("_alt");
-      const dayLabel=(()=>{
-        const baseKey=isAlt?vk.slice(0,-4):vk;
-        const prog=isAlt?ALT:P;
-        const sub=prog[baseKey]?prog[baseKey].sub:baseKey.toUpperCase();
-        return sub+(isAlt?" (ALT)":"");
-      })();
+      const dayLabel=resolveDayLabel(vk);
       const labelColor=isAlt?"#b69ef5":"#4a9eff";
       const meta=(data._meta&&data._meta[vk])||{};
       let durStr="";
@@ -1396,7 +1437,7 @@ function renderHist(){
 
       sessionHtml+=`<div style="font-size:8.1px;letter-spacing:2px;color:${labelColor};padding:6px 14px 4px;font-weight:700;">${esc(dayLabel)}${durStr?" · "+durStr:""}</div>`;
       allIds.forEach(id=>{
-        const name=resolveExName(id,vk);
+        const name=resolveExName(id);
         const ss=sd[id]||[];
         sessionHtml+=`<div class="hex"><div class="hexname"><span>${esc(name)}</span><button class="hdel-ex" onclick="delHistEx('${dt}','${vk}','${id}')">✕ remove</button></div><div class="hsets">`;
         ss.forEach((s,si)=>{
