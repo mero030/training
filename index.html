@@ -288,6 +288,10 @@ button{cursor:pointer;}
       <div id="done-banner"><h2>SESSION COMPLETE ✓</h2><p>All exercises logged. Rest well.</p></div>
     </div>
     <div id="hist-view">
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button onclick="exportHistory()" style="flex:1;padding:10px;background:transparent;border:1px solid #4a9eff55;color:var(--blue);font-size:9px;font-weight:700;letter-spacing:1.5px;font-family:inherit;">↑ EXPORT JSON</button>
+        <label style="flex:1;padding:10px;background:transparent;border:1px dashed #444;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1.5px;text-align:center;cursor:pointer;">↓ IMPORT JSON<input type="file" accept=".json" onchange="importHistory(event)" style="display:none;"></label>
+      </div>
       <div id="hist-day-tabs"></div>
       <div id="hist-content"></div>
     </div>
@@ -1453,6 +1457,36 @@ if("serviceWorker"in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW:",e)));
 }
 
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────
+function exportHistory(){
+  const data=localStorage.getItem(SK_LOGS)||"{}";
+  const blob=new Blob([data],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="workout_history_"+todayKey()+".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importHistory(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const incoming=JSON.parse(ev.target.result);
+      const existing=JSON.parse(localStorage.getItem(SK_LOGS)||"{}");
+      const merged=Object.assign({},incoming,existing);
+      localStorage.setItem(SK_LOGS,JSON.stringify(merged));
+      logs=merged;
+      flash();
+      renderHist();
+    }catch(err){
+      alert("Import failed — invalid JSON file.");
+    }
+    e.target.value="";
+  };
+  reader.readAsText(file);
+}
 // ── INIT ─────────────────────────────────────────────────────────────
 load();
 renderTabs();
